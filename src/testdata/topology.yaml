@@ -1,0 +1,134 @@
+tosca_definitions_version: alien_dsl_2_0_0
+
+metadata:
+  template_name: TestPluginsNew
+  template_version: 0.1.0-SNAPSHOT
+  template_author: admin
+
+description: "Test application using HEAppE TOSCA defintions imported by a Plugin"
+
+imports:
+  - <heappe-types.yaml>
+        
+topology_template:
+  node_templates:
+    Compute:
+      type: mytosca.types.Compute
+      capabilities:
+        endpoint:
+          properties:
+            protocol: tcp
+            initiator: source
+            secure: true
+            network_name: PRIVATE
+        scalable:
+          properties:
+            max_instances: 5
+            min_instances: 1
+            default_instances: 1
+    Soft:
+      type: mytosca.types.Soft
+
+  workflows:
+    install:
+      steps:
+        Compute_install:
+          target: Compute
+          activities:
+            - delegate: install
+          on_success:
+            - Soft_initial
+        Soft_initial:
+          target: Soft
+          activities:
+            - set_state: initial
+          on_success:
+            - Soft_creating
+        Soft_creating:
+          target: Soft
+          activities:
+            - set_state: creating
+          on_success:
+            - create_Soft
+        create_Soft:
+          target: Soft
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - Soft_created
+        Soft_created:
+          target: Soft
+          activities:
+            - set_state: created
+          on_success:
+            - Soft_configuring
+        Soft_configuring:
+          target: Soft
+          activities:
+            - set_state: configuring
+          on_success:
+            - configure_Soft
+        configure_Soft:
+          target: Soft
+          activities:
+            - call_operation: Standard.configure
+          on_success:
+            - Soft_configured
+        Soft_configured:
+          target: Soft
+          activities:
+            - set_state: configured
+          on_success:
+            - Soft_starting
+        Soft_starting:
+          target: Soft
+          activities:
+            - set_state: starting
+          on_success:
+            - start_Soft
+        start_Soft:
+          target: Soft
+          activities:
+            - call_operation: Standard.start
+          on_success:
+            - Soft_started
+        Soft_started:
+          target: Soft
+          activities:
+            - set_state: started
+    uninstall:
+      steps:
+        Soft_stopping:
+          target: Soft
+          activities:
+            - set_state: stopping
+          on_success:
+            - stop_Soft
+        stop_Soft:
+          target: Soft
+          activities:
+            - call_operation: Standard.stop
+          on_success:
+            - Soft_stopped
+        Soft_stopped:
+          target: Soft
+          activities:
+            - set_state: stopped
+          on_success:
+            - Soft_deleting
+        Soft_deleting:
+          target: Soft
+          activities:
+            - set_state: deleting
+          on_success:
+            - Soft_deleted
+        Soft_deleted:
+          target: Soft
+          activities:
+            - set_state: deleted
+          on_success:
+            - Compute_uninstall
+        Compute_uninstall:
+          target: Compute
+          activities:
+            - delegate: uninstall
