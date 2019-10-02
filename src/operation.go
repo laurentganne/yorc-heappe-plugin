@@ -30,7 +30,9 @@ import (
 )
 
 const (
-	heappeJobType = "org.heappe.nodes.Job"
+	heappeJobType      = "org.heappe.nodes.Job"
+	installOperation   = "install"
+	uninstallOperation = "uninstall"
 )
 
 type operationExecutor struct{}

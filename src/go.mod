@@ -1,6 +1,7 @@
 module github.com/laurentganne/heappe-plugin/v1
 
 require (
+	github.com/hashicorp/consul v1.2.3
 	github.com/hashicorp/go-hclog v0.8.0
 	github.com/hashicorp/go-plugin v1.0.0
 	github.com/pkg/errors v0.8.0
