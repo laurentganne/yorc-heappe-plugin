@@ -14,6 +14,21 @@
 
 package heappe
 
+// TaskSpecification holds task properties
+type TaskSpecification struct {
+	Name                    string
+	CommandTemplateID       int `json:"commandTemplateID"`
+	TemplateParameterValues []CommandTemplateParameterValue
+	minCores                int
+	maxCores                int
+	walltimeLimit           int
+	standardOutputFile      string
+	standardErrorFile       string
+	progressFile            string
+	logFile                 string
+	EnvironmentVariables    []EnvironmentVariable
+}
+
 // Client is the client interface to HEAppE service
 type Client interface {
 	CreateJob() (string, error)
@@ -22,16 +37,20 @@ type Client interface {
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
 func NewBasicAuthClient(url, username, password string) Client {
 	return &client{
-		URL:      url,
-		Username: username,
-		Password: password,
+		URL: url,
+		Auth: Authentication{
+			Credentials: PasswordCredentials{
+				Username: username,
+				Password: password,
+			},
+		},
 	}
 }
 
 type client struct {
-	URL      string
-	Username string
-	Password string
+	URL       string
+	Auth      Authentication
+	SessionID string
 }
 
 // CreateJob creates a HEAppE job

@@ -22,6 +22,16 @@ data_types:
       parameterValue:
         description: Command parameter value
         type: string
+  org.heappe.types.EnvironmentVariable:
+    derived_from: tosca.datatypes.Root
+    properties:
+      name:
+        description: Environment variable name
+        type: string
+        required: true
+      value:
+        description: Environment variable value
+        type: string
   org.heappe.types.TaskSpecification:
     derived_from: tosca.datatypes.Root
     properties:
@@ -38,6 +48,11 @@ data_types:
         type: list
         entry_schema:
           type: org.heappe.types.CommandTemplateParameterValue
+      environmentVariables:
+        description: Environment variables
+        type: list
+        entry_schema:
+          type: org.heappe.types.EnvironmentVariable
       minCores:
         description: Minimum number of cores required
         type: integer

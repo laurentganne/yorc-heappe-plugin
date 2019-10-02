@@ -16,7 +16,7 @@
 export GO111MODULE=on
 export CGO_ENABLED=0
 
-build:
+build: format
 	@echo "--> Running go build"
 	@cd src && go build -o ../bin/heappe-plugin
 	@echo "--> Embedding HEAppE types in binary"
@@ -26,4 +26,8 @@ build:
 	@cat ./build/embeddedResources.zip >> ./bin/heappe-plugin
 	@zip -A ./bin/heappe-plugin > /dev/null
 
-.PHONY: build
+format:
+	@echo "--> Running go fmt"
+	@cd src && go fmt ./...
+
+.PHONY: build format

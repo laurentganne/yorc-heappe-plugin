@@ -32,6 +32,7 @@ import (
 const (
 	heappeJobType = "org.heappe.nodes.Job"
 )
+
 type operationExecutor struct{}
 
 func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation, stepName string) (*prov.Action, time.Duration, error) {
@@ -41,7 +42,7 @@ func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.C
 		return nil, 0, err
 	}
 	kv := consulClient.KV()
-	
+
 	isJob, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeJobType)
 	if err != nil {
 		return nil, 0, err
@@ -49,7 +50,7 @@ func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.C
 	if !isJob {
 		return nil, 0, errors.Errorf("operation %q supported only for nodes derived from %q", operation.Name, heappeJobType)
 	}
-	
+
 	events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, deploymentID).Registerf(
 		"************* Executing asynchronous operation %q step %q on node %q", operation.Name, stepName, nodeName)
 	return nil, 0, nil
@@ -74,7 +75,7 @@ func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Config
 		delegateOperation = "uninstall"
 	case tosca.RunnableSubmitOperationName:
 		log.Printf("***** ExecOperation will call job submit")
-	case tosca.RunnableCancelOperationName :
+	case tosca.RunnableCancelOperationName:
 		log.Printf("***** ExecOperation will call job cancel")
 	default:
 		return errors.Errorf("Unsupported operation %q", operation.Name)

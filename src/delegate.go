@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	
+
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/events"
@@ -72,7 +72,6 @@ func (de *delegateExecutor) ExecDelegate(ctx context.Context, cfg config.Configu
 	// Emit a log or an event
 	events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, deploymentID).Registerf("**********Provisioning node %q of type %q", nodeName, nodeType)
 
-
 	operation := strings.ToLower(delegateOperation)
 	switch {
 	case operation == "install":
@@ -82,7 +81,7 @@ func (de *delegateExecutor) ExecDelegate(ctx context.Context, cfg config.Configu
 	default:
 		return errors.Errorf("Unsupported operation %q", delegateOperation)
 	}
-		for _, instanceName := range instances {
+	for _, instanceName := range instances {
 		// TODO: add here the code allowing to create a Compute Instance
 		deployments.SetInstanceStateWithContextualLogs(ctx, kv, deploymentID, nodeName, instanceName, tosca.NodeStateStarted)
 	}
