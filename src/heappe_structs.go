@@ -71,6 +71,12 @@ type JobCreateRESTParams struct {
 	SessionCode      string           `json:"sessionCode"`
 }
 
+// JobSubmitRESTParams holds HEAppE REST API job submission parameters
+type JobSubmitRESTParams struct {
+	CreatedJobInfoID int64  `json:"createdJobInfoId"`
+	SessionCode      string `json:"sessionCode"`
+}
+
 // TemplateParameterRESTResponse holds template parameters description in a job
 type TemplateParameterRESTResponse struct {
 	Identifier  string `json:"identifier"`
@@ -110,8 +116,8 @@ type TaskRESTResponse struct {
 	AllParameters    string  `json:"allParameters,omitempty"`
 }
 
-// JobCreateRESTResponse holds the response to a job creation
-type JobCreateRESTResponse struct {
+// JobRESTResponse holds the response to a job creation/submission
+type JobRESTResponse struct {
 	ID                 int64                       `json:"id"`
 	Name               string                      `json:"name"`
 	State              int                         `json:"state"`

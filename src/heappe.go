@@ -23,11 +23,13 @@ import (
 const (
 	heappeAuthREST      = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
 	heappeCreateJobREST = "/heappe/JobManagement/CreateJob"
+	heappeSubmitJobREST = "/heappe/JobManagement/SubmitJob"
 )
 
 // Client is the client interface to HEAppE service
 type Client interface {
 	CreateJob(job JobSpecification) (int64, error)
+	SubmitJob(jobID int64) error
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
@@ -64,15 +66,33 @@ func (h *heappeClient) CreateJob(job JobSpecification) (int64, error) {
 		JobSpecification: job,
 		SessionCode:      h.sessionID,
 	}
-	var jobCreated JobCreateRESTResponse
+	var jobResponse JobRESTResponse
 
-	err = h.httpClient.doRequest(http.MethodPost, heappeCreateJobREST, http.StatusOK, params, &jobCreated)
-	jobID = jobCreated.ID
+	err = h.httpClient.doRequest(http.MethodPost, heappeCreateJobREST, http.StatusOK, params, &jobResponse)
+	jobID = jobResponse.ID
 	if err != nil {
 		err = errors.Wrap(err, "Failed to create job")
 	}
 
 	return jobID, err
+}
+
+// SubmitJob creates a HEAppE job
+func (h *heappeClient) SubmitJob(jobID int64) error {
+
+	params := JobSubmitRESTParams{
+		CreatedJobInfoID: jobID,
+		SessionCode:      h.sessionID,
+	}
+
+	var jobResponse JobRESTResponse
+
+	err := h.httpClient.doRequest(http.MethodPost, heappeSubmitJobREST, http.StatusOK, params, &jobResponse)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to submit job")
+	}
+
+	return err
 }
 
 func (h *heappeClient) authenticate() (string, error) {
