@@ -26,6 +26,8 @@ const (
 	heappeAuthREST          = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
 	heappeCreateJobREST     = "/heappe/JobManagement/CreateJob"
 	heappeSubmitJobREST     = "/heappe/JobManagement/SubmitJob"
+	heappeCancelJobREST     = "/heappe/JobManagement/CancelJob"
+	heappeDeleteJobREST     = "/heappe/JobManagement/DeleteJob"
 	heappeJobInfoREST       = "/heappe/JobManagement/GetCurrentInfoForJob"
 	heappeJobStateQueued    = "QUEUED"
 	heappeJobStateRunning   = "RUNNING"
@@ -38,6 +40,8 @@ const (
 type Client interface {
 	CreateJob(job JobSpecification) (int64, error)
 	SubmitJob(jobID int64) error
+	CancelJob(jobID int64) error
+	DeleteJob(jobID int64) error
 	GetJobState(jobID int64) (string, error)
 }
 
@@ -86,7 +90,7 @@ func (h *heappeClient) CreateJob(job JobSpecification) (int64, error) {
 	return jobID, err
 }
 
-// SubmitJob creates a HEAppE job
+// SubmitJob submits a HEAppE job
 func (h *heappeClient) SubmitJob(jobID int64) error {
 
 	params := JobSubmitRESTParams{
@@ -99,6 +103,42 @@ func (h *heappeClient) SubmitJob(jobID int64) error {
 	err := h.httpClient.doRequest(http.MethodPost, heappeSubmitJobREST, http.StatusOK, params, &jobResponse)
 	if err != nil {
 		err = errors.Wrap(err, "Failed to submit job")
+	}
+
+	return err
+}
+
+// CancelJob cancels a HEAppE job
+func (h *heappeClient) CancelJob(jobID int64) error {
+
+	params := JobInfoRESTParams{
+		SubmittedJobInfoID: jobID,
+		SessionCode:        h.sessionID,
+	}
+
+	var jobResponse JobRESTResponse
+
+	err := h.httpClient.doRequest(http.MethodPost, heappeCancelJobREST, http.StatusOK, params, &jobResponse)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to cancel job")
+	}
+
+	return err
+}
+
+// DeleteJob delete a HEAppE job
+func (h *heappeClient) DeleteJob(jobID int64) error {
+
+	params := JobInfoRESTParams{
+		SubmittedJobInfoID: jobID,
+		SessionCode:        h.sessionID,
+	}
+
+	var response string
+
+	err := h.httpClient.doRequest(http.MethodPost, heappeDeleteJobREST, http.StatusOK, params, &response)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to delete job")
 	}
 
 	return err
