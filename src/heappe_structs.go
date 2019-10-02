@@ -77,6 +77,12 @@ type JobSubmitRESTParams struct {
 	SessionCode      string `json:"sessionCode"`
 }
 
+// JobInfoRESTParams holds HEAppE REST API job info parameters
+type JobInfoRESTParams struct {
+	SubmittedJobInfoID int64  `json:"submittedJobInfoId"`
+	SessionCode        string `json:"sessionCode"`
+}
+
 // TemplateParameterRESTResponse holds template parameters description in a job
 type TemplateParameterRESTResponse struct {
 	Identifier  string `json:"identifier"`

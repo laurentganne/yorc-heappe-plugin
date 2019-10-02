@@ -18,18 +18,27 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
+
+	"github.com/ystia/yorc/v4/log"
 )
 
 const (
-	heappeAuthREST      = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
-	heappeCreateJobREST = "/heappe/JobManagement/CreateJob"
-	heappeSubmitJobREST = "/heappe/JobManagement/SubmitJob"
+	heappeAuthREST          = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
+	heappeCreateJobREST     = "/heappe/JobManagement/CreateJob"
+	heappeSubmitJobREST     = "/heappe/JobManagement/SubmitJob"
+	heappeJobInfoREST       = "/heappe/JobManagement/GetCurrentInfoForJob"
+	heappeJobStateQueued    = "QUEUED"
+	heappeJobStateRunning   = "RUNNING"
+	heappeJobStateCompleted = "COMPLETED"
+	heappeJobStateFailed    = "FAILED"
+	heappeJobStateCanceled  = "CANCELED"
 )
 
 // Client is the client interface to HEAppE service
 type Client interface {
 	CreateJob(job JobSpecification) (int64, error)
 	SubmitJob(jobID int64) error
+	GetJobState(jobID int64) (string, error)
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
@@ -93,6 +102,42 @@ func (h *heappeClient) SubmitJob(jobID int64) error {
 	}
 
 	return err
+}
+
+// GetJobState gets a HEAppE job state
+func (h *heappeClient) GetJobState(jobID int64) (string, error) {
+
+	params := JobInfoRESTParams{
+		SubmittedJobInfoID: jobID,
+		SessionCode:        h.sessionID,
+	}
+
+	var jobState string
+	var jobResponse JobRESTResponse
+
+	err := h.httpClient.doRequest(http.MethodGet, heappeJobInfoREST, http.StatusOK, params, &jobResponse)
+	if err != nil {
+		return jobState, errors.Wrap(err, "Failed to get job state")
+	}
+
+	stateValue := jobResponse.State
+	switch stateValue {
+	case 0, 1, 2:
+		jobState = heappeJobStateQueued
+	case 3:
+		jobState = heappeJobStateRunning
+	case 4:
+		jobState = heappeJobStateCompleted
+	case 5:
+		jobState = heappeJobStateFailed
+	case 6:
+		jobState = heappeJobStateFailed // HEAppE state canceled
+	default:
+		log.Printf("Error getting state for job %d, unexpected state %d, considering it failed", jobID, stateValue)
+		jobState = heappeJobStateFailed
+	}
+
+	return jobState, err
 }
 
 func (h *heappeClient) authenticate() (string, error) {
