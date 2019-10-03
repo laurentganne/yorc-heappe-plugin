@@ -16,6 +16,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -28,8 +30,8 @@ import (
 )
 
 const (
-	infrastructureType      = "HEAppE"
-	locationURLPropertyName = "URL"
+	infrastructureType      = "heappe"
+	locationURLPropertyName = "url"
 	jobIdConsulAttribute    = "job_id"
 )
 
@@ -106,16 +108,16 @@ func (e *jobExecution) createJob(ctx context.Context) error {
 		return err
 	}
 
-	jobId, err := heappeClient.CreateJob(jobSpec)
+	jobID, err := heappeClient.CreateJob(jobSpec)
 	if err != nil {
 		return err
 	}
 
 	// Store the job id
 	err = deployments.SetAttributeForAllInstances(e.kv, e.deploymentID, e.nodeName,
-		jobIdConsulAttribute, strconv.FormatInt(jobId, 10))
+		jobIdConsulAttribute, strconv.FormatInt(jobID, 10))
 	if err != nil {
-		err = errors.Wrapf(err, "Job %d created on HEAppE, but failed to store this job id", jobId)
+		err = errors.Wrapf(err, "Job %d created on HEAppE, but failed to store this job id", jobID)
 	}
 	return err
 }
@@ -189,6 +191,120 @@ func (e *jobExecution) getJobSpecification() (JobSpecification, error) {
 			e.nodeName, jobSpecificationProperty, fieldPropName.propName)
 	}
 
+	// Getting associated tasks
+	tasks, err := deployments.GetNodePropertyValue(e.kv, e.deploymentID, e.nodeName, jobSpecificationProperty, "tasks")
+	if err != nil {
+		return jobSpec, err
+	}
+
+	if tasks != nil && tasks.RawString() != "" {
+		var ok bool
+		jobSpec.Tasks = make([]TaskSpecification, 0)
+		taskArray, ok := tasks.Value.([]interface{})
+		if !ok {
+			return jobSpec, errors.Errorf(
+				"failed to retrieve job tasks specification for deployment %s node %s, wrong type for %+s",
+				e.deploymentID, e.nodeName, tasks.RawString())
+		}
+
+		for _, taskVal := range taskArray {
+			attrMap, ok := taskVal.(map[string]interface{})
+			if !ok {
+				return jobSpec, errors.Errorf(
+					"failed to retrieve task specification for deployment %s node %s, wrong type for %+v",
+					e.deploymentID, e.nodeName, taskVal)
+			}
+
+			var task TaskSpecification
+
+			// Get string properties
+
+			var taskPropConsulPropString = []struct {
+				taskProp   *string
+				consulProp string
+			}{
+				{taskProp: &(task.Name), consulProp: "name"},
+				{taskProp: &(task.StandardOutputFile), consulProp: "standardOutputFile"},
+				{taskProp: &(task.StandardErrorFile), consulProp: "standardErrorFile"},
+				{taskProp: &(task.ProgressFile), consulProp: "progressFile"},
+				{taskProp: &(task.LogFile), consulProp: "logFile"},
+			}
+
+			for _, props := range taskPropConsulPropString {
+				rawValue, ok := attrMap[props.consulProp]
+				if ok {
+					val, ok := rawValue.(string)
+					if !ok {
+						return jobSpec, errors.Errorf(
+							"Expected a string for deployment %s node %s task property %s, got %+v",
+							e.deploymentID, e.nodeName, props.consulProp, rawValue)
+					}
+					*props.taskProp = val
+				}
+			}
+
+			// Get int properties
+
+			var taskPropConsulPropInt = []struct {
+				taskProp   *int
+				consulProp string
+			}{
+				{taskProp: &(task.CommandTemplateID), consulProp: "commandTemplateId"},
+				{taskProp: &(task.MinCores), consulProp: "minCores"},
+				{taskProp: &(task.MaxCores), consulProp: "maxCores"},
+				{taskProp: &(task.WalltimeLimit), consulProp: "walltimeLimit"},
+			}
+
+			for _, props := range taskPropConsulPropInt {
+				rawValue, ok := attrMap[props.consulProp]
+				if ok {
+					val, ok := rawValue.(string)
+					if !ok {
+						return jobSpec, errors.Errorf(
+							"Expected an int for deployment %s node %s task %s property %s, got %+v",
+							e.deploymentID, e.nodeName, task.Name, props.consulProp, rawValue)
+					}
+					*props.taskProp, err = strconv.Atoi(val)
+					if err != nil {
+						return jobSpec, errors.Wrapf(err,
+							"Cannot convert as an int value %q for deployment %s node %s task %s property %s",
+							val, e.deploymentID, e.nodeName, task.Name, props.consulProp)
+					}
+				}
+			}
+
+			// Get template parameters
+			parameters, ok := attrMap["templateParameterValues"]
+			if ok {
+				paramsString := fmt.Sprintf("%+v", parameters)
+				task.TemplateParameterValues = make([]CommandTemplateParameterValue, 0)
+				err = json.Unmarshal([]byte(paramsString), &task.TemplateParameterValues)
+				if err != nil {
+					return jobSpec, errors.Errorf(
+						"Expected an array of template parameters for deployment %s node %s task %s, got %+v",
+						e.deploymentID, e.nodeName, task.Name, paramsString)
+
+				}
+			}
+
+			// Get environment variables
+			parameters, ok = attrMap["environmentVariables"]
+			if ok {
+				paramsString := fmt.Sprintf("%+v", parameters)
+				task.EnvironmentVariables = make([]EnvironmentVariable, 0)
+				err = json.Unmarshal([]byte(paramsString), &task.EnvironmentVariables)
+				if err != nil {
+					return jobSpec, errors.Errorf(
+						"Expected an array of environment vairables for deployment %s node %s task %s, got %+v",
+						e.deploymentID, e.nodeName, task.Name, paramsString)
+
+				}
+			}
+
+			jobSpec.Tasks = append(jobSpec.Tasks, task)
+
+		}
+	}
 	return jobSpec, err
 }
 

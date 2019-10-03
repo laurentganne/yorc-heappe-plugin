@@ -44,7 +44,7 @@ type EnvironmentVariable struct {
 // TaskSpecification holds task properties
 type TaskSpecification struct {
 	Name                    string                          `json:"name"`
-	CommandTemplateID       int                             `json:"commandTemplateID"`
+	CommandTemplateID       int                             `json:"commandTemplateId"`
 	TemplateParameterValues []CommandTemplateParameterValue `json:"templateParameterValues,omitempty"`
 	MinCores                int                             `json:"minCores"`
 	MaxCores                int                             `json:"maxCores"`

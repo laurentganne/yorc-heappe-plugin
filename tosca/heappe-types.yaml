@@ -138,7 +138,7 @@ node_types:
         type: org.heappe.types.JobSpecification
         required: true
     attributes:
-      jobID:
+      job_id:
         type: string
         description: >
           ID of the HEAppE job created

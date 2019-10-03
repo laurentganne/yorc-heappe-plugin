@@ -18,8 +18,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/events"
@@ -73,14 +71,16 @@ func (de *delegateExecutor) ExecDelegate(ctx context.Context, cfg config.Configu
 	events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, deploymentID).Registerf("**********Provisioning node %q of type %q", nodeName, nodeType)
 
 	operation := strings.ToLower(delegateOperation)
-	switch {
-	case operation == "install":
-		log.Printf("******** Delegate operation install")
-	case operation == "uninstall":
-		log.Printf("******** Delegate operation uninstall")
-	default:
-		return errors.Errorf("Unsupported operation %q", delegateOperation)
+	exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
+	if err != nil {
+		return err
 	}
+
+	err = exec.execute(ctx)
+	if err != nil {
+		return err
+	}
+
 	for _, instanceName := range instances {
 		// TODO: add here the code allowing to create a Compute Instance
 		deployments.SetInstanceStateWithContextualLogs(ctx, kv, deploymentID, nodeName, instanceName, tosca.NodeStateStarted)
