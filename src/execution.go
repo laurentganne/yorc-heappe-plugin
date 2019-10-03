@@ -282,7 +282,7 @@ func (e *jobExecution) getJobSpecification() (JobSpecification, error) {
 				}
 
 				for _, paramsVal := range paramsArray {
-					attrMap, ok := paramsVal.(map[string]string)
+					attrMap, ok := paramsVal.(map[string]interface{})
 					if !ok {
 						return jobSpec, errors.Errorf(
 							"failed to retrieve parameters for deployment %s node %s task %s, wrong type for %+v",
@@ -290,13 +290,29 @@ func (e *jobExecution) getJobSpecification() (JobSpecification, error) {
 					}
 
 					var param CommandTemplateParameterValue
-					param.CommandParameterIdentifier, ok = attrMap["commandParameterIdentifier"]
+					v, ok := attrMap["commandParameterIdentifier"]
 					if !ok {
 						return jobSpec, errors.Errorf(
 							"Failed to get command parameter identifier for deployment %s node %s task %s, parameter %+v",
 							e.deploymentID, e.nodeName, task.Name, attrMap)
 					}
-					param.ParameterValue = attrMap["parameterValue"]
+					param.CommandParameterIdentifier, ok = v.(string)
+					if !ok {
+						return jobSpec, errors.Errorf(
+							"Failed to get command parameter identifier string value for deployment %s node %s task %s, identifier %+v",
+							e.deploymentID, e.nodeName, task.Name, v)
+					}
+
+					v, ok = attrMap["parameterValue"]
+					if ok {
+						param.ParameterValue, ok = v.(string)
+						if !ok {
+							return jobSpec, errors.Errorf(
+								"Failed to get command parameter string value for deployment %s node %s task %s identifier %s, value %+v",
+								e.deploymentID, e.nodeName, task.Name, param.CommandParameterIdentifier, v)
+						}
+
+					}
 
 					task.TemplateParameterValues = append(task.TemplateParameterValues, param)
 				}
@@ -313,7 +329,7 @@ func (e *jobExecution) getJobSpecification() (JobSpecification, error) {
 				}
 
 				for _, paramsVal := range paramsArray {
-					attrMap, ok := paramsVal.(map[string]string)
+					attrMap, ok := paramsVal.(map[string]interface{})
 					if !ok {
 						return jobSpec, errors.Errorf(
 							"failed to retrieve environment variable for deployment %s node %s task %s, wrong type for %+v",
@@ -321,13 +337,29 @@ func (e *jobExecution) getJobSpecification() (JobSpecification, error) {
 					}
 
 					var param EnvironmentVariable
-					param.Name, ok = attrMap["name"]
+					v, ok := attrMap["name"]
 					if !ok {
 						return jobSpec, errors.Errorf(
 							"Failed to get environment variable name for deployment %s node %s task %s, parameter %+v",
 							e.deploymentID, e.nodeName, task.Name, attrMap)
 					}
-					param.Value = attrMap["value"]
+					param.Name, ok = v.(string)
+					if !ok {
+						return jobSpec, errors.Errorf(
+							"Failed to get environment variable name string value for deployment %s node %s task %s, identifier %+v",
+							e.deploymentID, e.nodeName, task.Name, v)
+					}
+
+					v, ok = attrMap["value"]
+					if ok {
+						param.Value, ok = v.(string)
+						if !ok {
+							return jobSpec, errors.Errorf(
+								"Failed to get environment variable string value for deployment %s node %s task %s identifier %s, value %+v",
+								e.deploymentID, e.nodeName, task.Name, param.Name, v)
+						}
+
+					}
 
 					task.EnvironmentVariables = append(task.EnvironmentVariables, param)
 				}
