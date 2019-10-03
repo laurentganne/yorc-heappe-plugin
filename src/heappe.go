@@ -36,8 +36,8 @@ const (
 	heappeJobStateCanceled  = "CANCELED"
 )
 
-// Client is the client interface to HEAppE service
-type Client interface {
+// HEAppEClient is the client interface to HEAppE service
+type HEAppEClient interface {
 	CreateJob(job JobSpecification) (int64, error)
 	SubmitJob(jobID int64) error
 	CancelJob(jobID int64) error
@@ -46,7 +46,7 @@ type Client interface {
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
-func NewBasicAuthClient(url, username, password string) Client {
+func NewBasicAuthClient(url, username, password string) HEAppEClient {
 	return &heappeClient{
 		auth: Authentication{
 			Credentials: PasswordCredentials{

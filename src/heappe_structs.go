@@ -14,6 +14,10 @@
 
 package main
 
+const (
+	jobSpecificationProperty = "jobSpecification"
+)
+
 // PasswordCredentials holds user/password to perform a basic authentication
 type PasswordCredentials struct {
 	Username string `json:"username"`
