@@ -26,13 +26,15 @@ import (
 
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
+	"github.com/ystia/yorc/v4/events"
 	"github.com/ystia/yorc/v4/prov"
+	"github.com/ystia/yorc/v4/tosca"
 )
 
 const (
 	infrastructureType      = "heappe"
 	locationURLPropertyName = "url"
-	jobIdConsulAttribute    = "job_id"
+	jobIDConsulAttribute    = "job_id"
 )
 
 type execution interface {
@@ -78,7 +80,21 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 }
 
 func (e *jobExecution) executeAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
-	return nil, 0, nil
+	if e.operationName != tosca.RunnableRunOperationName {
+		return nil, 0, errors.Errorf("Unsupported asynchronous operation %q", e.operationName)
+	}
+
+	jobID, err := e.getJobID()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	data := make(map[string]string)
+	data["taskID"] = e.taskID
+	data["jobID"] = strconv.FormatInt(jobID, 10)
+
+	// TODO: use a configurable time duration
+	return &prov.Action{ActionType: "heappe-job-monitoring", Data: data}, 5 * time.Second, err
 }
 
 func (e *jobExecution) execute(ctx context.Context) error {
@@ -86,9 +102,41 @@ func (e *jobExecution) execute(ctx context.Context) error {
 	var err error
 	switch e.operationName {
 	case installOperation:
+		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+			"Creating Job %q", e.nodeName)
 		err = e.createJob(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+				"Failed to create Job %q, error %s", e.nodeName, err.Error())
+
+		}
 	case uninstallOperation:
+		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+			"Deleting Job %q", e.nodeName)
 		err = e.deleteJob(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+				"Failed to delete Job %q, error %s", e.nodeName, err.Error())
+
+		}
+	case tosca.RunnableSubmitOperationName:
+		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+			"Submitting Job %q", e.nodeName)
+		err = e.submitJob(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+				"Failed to submit Job %q, error %s", e.nodeName, err.Error())
+
+		}
+	case tosca.RunnableCancelOperationName:
+		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+			"Canceling Job %q", e.nodeName)
+		err = e.cancelJob(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+				"Failed to cancel Job %q, error %s", e.nodeName, err.Error())
+
+		}
 	default:
 		err = errors.Errorf("Unsupported operation %q", e.operationName)
 	}
@@ -115,7 +163,7 @@ func (e *jobExecution) createJob(ctx context.Context) error {
 
 	// Store the job id
 	err = deployments.SetAttributeForAllInstances(e.kv, e.deploymentID, e.nodeName,
-		jobIdConsulAttribute, strconv.FormatInt(jobID, 10))
+		jobIDConsulAttribute, strconv.FormatInt(jobID, 10))
 	if err != nil {
 		err = errors.Wrapf(err, "Job %d created on HEAppE, but failed to store this job id", jobID)
 	}
@@ -137,12 +185,42 @@ func (e *jobExecution) deleteJob(ctx context.Context) error {
 	return heappeClient.DeleteJob(jobID)
 }
 
+func (e *jobExecution) submitJob(ctx context.Context) error {
+
+	jobID, err := e.getJobID()
+	if err != nil {
+		return err
+	}
+
+	heappeClient, err := e.getHEAppEClient()
+	if err != nil {
+		return err
+	}
+
+	return heappeClient.SubmitJob(jobID)
+}
+
+func (e *jobExecution) cancelJob(ctx context.Context) error {
+
+	jobID, err := e.getJobID()
+	if err != nil {
+		return err
+	}
+
+	heappeClient, err := e.getHEAppEClient()
+	if err != nil {
+		return err
+	}
+
+	return heappeClient.CancelJob(jobID)
+}
+
 func (e *jobExecution) getJobID() (int64, error) {
 	var jobID int64
 
-	val, err := deployments.GetInstanceAttributeValue(e.kv, e.deploymentID, e.nodeName, "0", "job_id")
+	val, err := deployments.GetInstanceAttributeValue(e.kv, e.deploymentID, e.nodeName, "0", jobIDConsulAttribute)
 	if err != nil {
-		return jobID, err
+		return jobID, errors.Wrapf(err, "Failed to get job id for deployment %s node %s", e.deploymentID, e.nodeName)
 	} else if val == nil {
 		return jobID, errors.Errorf("Found no job id for deployment %s node %s", e.deploymentID, e.nodeName)
 	}
