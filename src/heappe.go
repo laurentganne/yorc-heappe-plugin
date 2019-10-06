@@ -29,7 +29,7 @@ const (
 	heappeCancelJobREST     = "/heappe/JobManagement/CancelJob"
 	heappeDeleteJobREST     = "/heappe/JobManagement/DeleteJob"
 	heappeJobInfoREST       = "/heappe/JobManagement/GetCurrentInfoForJob"
-	heappeJobStateQueued    = "QUEUED"
+	heappeJobStatePending   = "PENDING"
 	heappeJobStateRunning   = "RUNNING"
 	heappeJobStateCompleted = "COMPLETED"
 	heappeJobStateFailed    = "FAILED"
@@ -93,6 +93,14 @@ func (h *heappeClient) CreateJob(job JobSpecification) (int64, error) {
 // SubmitJob submits a HEAppE job
 func (h *heappeClient) SubmitJob(jobID int64) error {
 
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return err
+		}
+	}
+
 	params := JobSubmitRESTParams{
 		CreatedJobInfoID: jobID,
 		SessionCode:      h.sessionID,
@@ -110,6 +118,14 @@ func (h *heappeClient) SubmitJob(jobID int64) error {
 
 // CancelJob cancels a HEAppE job
 func (h *heappeClient) CancelJob(jobID int64) error {
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return err
+		}
+	}
 
 	params := JobInfoRESTParams{
 		SubmittedJobInfoID: jobID,
@@ -129,6 +145,14 @@ func (h *heappeClient) CancelJob(jobID int64) error {
 // DeleteJob delete a HEAppE job
 func (h *heappeClient) DeleteJob(jobID int64) error {
 
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return err
+		}
+	}
+
 	params := JobInfoRESTParams{
 		SubmittedJobInfoID: jobID,
 		SessionCode:        h.sessionID,
@@ -147,6 +171,14 @@ func (h *heappeClient) DeleteJob(jobID int64) error {
 // GetJobState gets a HEAppE job state
 func (h *heappeClient) GetJobState(jobID int64) (string, error) {
 
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return heappeJobStateFailed, err
+		}
+	}
+
 	params := JobInfoRESTParams{
 		SubmittedJobInfoID: jobID,
 		SessionCode:        h.sessionID,
@@ -155,7 +187,7 @@ func (h *heappeClient) GetJobState(jobID int64) (string, error) {
 	var jobState string
 	var jobResponse JobRESTResponse
 
-	err := h.httpClient.doRequest(http.MethodGet, heappeJobInfoREST, http.StatusOK, params, &jobResponse)
+	err := h.httpClient.doRequest(http.MethodPost, heappeJobInfoREST, http.StatusOK, params, &jobResponse)
 	if err != nil {
 		return jobState, errors.Wrap(err, "Failed to get job state")
 	}
@@ -163,7 +195,7 @@ func (h *heappeClient) GetJobState(jobID int64) (string, error) {
 	stateValue := jobResponse.State
 	switch stateValue {
 	case 0, 1, 2:
-		jobState = heappeJobStateQueued
+		jobState = heappeJobStatePending
 	case 3:
 		jobState = heappeJobStateRunning
 	case 4:

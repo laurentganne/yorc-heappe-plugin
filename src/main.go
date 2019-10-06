@@ -57,5 +57,11 @@ func main() {
 		return new(operationExecutor)
 	}
 
+	// Set ActionFunc that implements an ActionOperator for HEAppE jobs
+	servConfig.ActionTypes = []string{"heappe-job-monitoring"}
+	servConfig.ActionFunc = func() prov.ActionOperator {
+		return new(actionOperator)
+	}
+
 	plugin.Serve(servConfig)
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/events"
+	"github.com/ystia/yorc/v4/helper/consulutil"
 	"github.com/ystia/yorc/v4/prov"
 	"github.com/ystia/yorc/v4/tosca"
 )
@@ -89,6 +90,7 @@ func (e *jobExecution) executeAsync(ctx context.Context) (*prov.Action, time.Dur
 
 	data := make(map[string]string)
 	data["taskID"] = e.taskID
+	data["nodeName"] = e.nodeName
 	data["jobID"] = strconv.FormatInt(jobID, 10)
 
 	// TODO: use a configurable time duration
@@ -149,7 +151,7 @@ func (e *jobExecution) createJob(ctx context.Context) error {
 		return err
 	}
 
-	heappeClient, err := e.getHEAppEClient()
+	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
 		return err
 	}
@@ -175,7 +177,7 @@ func (e *jobExecution) deleteJob(ctx context.Context) error {
 		return err
 	}
 
-	heappeClient, err := e.getHEAppEClient()
+	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
 		return err
 	}
@@ -190,7 +192,7 @@ func (e *jobExecution) submitJob(ctx context.Context) error {
 		return err
 	}
 
-	heappeClient, err := e.getHEAppEClient()
+	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,7 @@ func (e *jobExecution) cancelJob(ctx context.Context) error {
 		return err
 	}
 
-	heappeClient, err := e.getHEAppEClient()
+	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
 		return err
 	}
@@ -226,7 +228,7 @@ func (e *jobExecution) getJobID() (int64, error) {
 	strVal := val.RawString()
 	jobID, err = strconv.ParseInt(strVal, 10, 64)
 	if err != nil {
-		err = errors.Wrapf(err, "Unexpected Job ID value %q for deployment %s node %s", e.deploymentID, e.nodeName)
+		err = errors.Wrapf(err, "Unexpected Job ID value %q for deployment %s node %s", strVal, e.deploymentID, e.nodeName)
 	}
 
 	return jobID, err
@@ -465,25 +467,25 @@ func getIntNodePropertyValue(kv *api.KV, deploymentID, nodeName, propertyName st
 	return result, err
 }
 
-func (e *jobExecution) getHEAppEClient() (HEAppEClient, error) {
+func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (HEAppEClient, error) {
 
-	url := e.cfg.Infrastructures[infrastructureType].GetString(locationURLPropertyName)
+	url := cfg.Infrastructures[infrastructureType].GetString(locationURLPropertyName)
 	if url == "" {
 		return nil, errors.Errorf("No URL defined in HEAppE location configuration")
 	}
-
-	username, err := deployments.GetStringNodePropertyValue(e.kv, e.deploymentID,
-		e.nodeName, "user")
+	kv := consulutil.GetKV()
+	username, err := deployments.GetStringNodePropertyValue(kv, deploymentID,
+		nodeName, "user")
 	if err != nil {
 		return nil, err
 	}
 	if username == "" {
-		return nil, errors.Errorf("No user defined in deployment %s node %s", e.deploymentID, e.nodeName)
+		return nil, errors.Errorf("No user defined in deployment %s node %s", deploymentID, nodeName)
 
 	}
 
-	password, err := deployments.GetStringNodePropertyValue(e.kv, e.deploymentID,
-		e.nodeName, "password")
+	password, err := deployments.GetStringNodePropertyValue(kv, deploymentID,
+		nodeName, "password")
 	if err != nil {
 		return nil, err
 	}

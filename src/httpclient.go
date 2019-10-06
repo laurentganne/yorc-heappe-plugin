@@ -23,8 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ystia/yorc/v4/commands/httputil"
-	"github.com/ystia/yorc/v4/config"
+	"github.com/ystia/yorc/v4/log"
 )
 
 // Client is the client interface to HEAppE service
@@ -42,30 +41,28 @@ func getHTTPClient(URL string) *httpclient {
 
 }
 
+// NewRequest returns a new HTTP request
 func (c *httpclient) newRequest(method, path string, body io.Reader) (*http.Request, error) {
 	return http.NewRequest(method, c.baseURL+path, body)
 }
 
 func (c *httpclient) doRequest(method, path string, expectedStatus int, payload, result interface{}) error {
 
-	client, err := httputil.GetClient(config.Client{YorcAPI: c.baseURL})
-	if err != nil {
-		return err
-	}
-
 	jsonParam, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	request, err := client.NewRequest(method, path, bytes.NewBuffer([]byte(jsonParam)))
+	log.Debugf("Sending request %s to %s", method, c.baseURL+path)
+
+	request, err := c.newRequest(method, path, bytes.NewBuffer(jsonParam))
 	if err != nil {
 		return err
 	}
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Accept", "application/json")
 
-	response, err := client.Do(request)
+	response, err := c.Do(request)
 	defer response.Body.Close()
 	if err != nil {
 		return err
