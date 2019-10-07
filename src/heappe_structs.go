@@ -87,34 +87,34 @@ type JobInfoRESTParams struct {
 	SessionCode        string `json:"sessionCode"`
 }
 
-// TemplateParameterRESTResponse holds template parameters description in a job
-type TemplateParameterRESTResponse struct {
+// TemplateParameter holds template parameters description in a job
+type TemplateParameter struct {
 	Identifier  string `json:"identifier"`
 	Description string `json:"description"`
 }
 
-// CommandTemplateRESTResponse holds a command template description in a job
-type CommandTemplateRESTResponse struct {
-	ID                 int64                           `json:"id"`
-	Name               string                          `json:"name"`
-	Description        string                          `json:"description"`
-	Code               string                          `json:"code"`
-	TemplateParameters []TemplateParameterRESTResponse `json:"templateParameters"`
+// CommandTemplate holds a command template description in a job
+type CommandTemplate struct {
+	ID                 int64               `json:"id"`
+	Name               string              `json:"name"`
+	Description        string              `json:"description"`
+	Code               string              `json:"code"`
+	TemplateParameters []TemplateParameter `json:"templateParameters"`
 }
 
-// ClusterNodeTypeRESTResponse holds a node description in a job
-type ClusterNodeTypeRESTResponse struct {
-	ID               int64                         `json:"id"`
-	Name             string                        `json:"name"`
-	Description      string                        `json:"description"`
-	NumberOfNodes    int                           `json:"numberOfNodes"`
-	CoresPerNode     int                           `json:"coresPerNode"`
-	MaxWalltime      int                           `json:"maxWalltime"`
-	CommandTemplates []CommandTemplateRESTResponse `json:"commandTemplates"`
+// ClusterNodeType holds a node description in a job
+type ClusterNodeType struct {
+	ID               int64             `json:"id"`
+	Name             string            `json:"name"`
+	Description      string            `json:"description"`
+	NumberOfNodes    int               `json:"numberOfNodes"`
+	CoresPerNode     int               `json:"coresPerNode"`
+	MaxWalltime      int               `json:"maxWalltime"`
+	CommandTemplates []CommandTemplate `json:"commandTemplates"`
 }
 
-// TaskRESTResponse holds a task description in a job
-type TaskRESTResponse struct {
+// SubmittedTaskInfo holds a task description in a job
+type SubmittedTaskInfo struct {
 	ID               int64   `json:"id"`
 	Name             string  `json:"name"`
 	State            int     `json:"state"`
@@ -126,19 +126,43 @@ type TaskRESTResponse struct {
 	AllParameters    string  `json:"allParameters,omitempty"`
 }
 
-// JobRESTResponse holds the response to a job creation/submission
-type JobRESTResponse struct {
-	ID                 int64                       `json:"id"`
-	Name               string                      `json:"name"`
-	State              int                         `json:"state"`
-	Priority           int                         `json:"priority"`
-	Project            string                      `json:"project"`
-	CreationTime       string                      `json:"creationTime"`
-	SubmitTime         string                      `json:"submitTime,omitempty"`
-	StartTime          string                      `json:"startTime,omitempty"`
-	EndTime            string                      `json:"endTime,omitempty"`
-	TotalAllocatedTime float64                     `json:"totalAllocatedTime,omitempty"`
-	AllParameters      string                      `json:"allParameters,omitempty"`
-	NodeType           ClusterNodeTypeRESTResponse `json:"nodeType"`
-	Tasks              []TaskRESTResponse          `json:"tasks"`
+// SubmittedJobInfo holds the response to a job creation/submission
+type SubmittedJobInfo struct {
+	ID                 int64               `json:"id"`
+	Name               string              `json:"name"`
+	State              int                 `json:"state"`
+	Priority           int                 `json:"priority"`
+	Project            string              `json:"project"`
+	CreationTime       string              `json:"creationTime"`
+	SubmitTime         string              `json:"submitTime,omitempty"`
+	StartTime          string              `json:"startTime,omitempty"`
+	EndTime            string              `json:"endTime,omitempty"`
+	TotalAllocatedTime float64             `json:"totalAllocatedTime,omitempty"`
+	AllParameters      string              `json:"allParameters,omitempty"`
+	NodeType           ClusterNodeType     `json:"nodeType"`
+	Tasks              []SubmittedTaskInfo `json:"tasks"`
+}
+
+// TaskFileOffset holds the offset to a file of a given task
+type TaskFileOffset struct {
+	SubmittedTaskInfoID int64 `json:"submittedTaskInfoId"`
+	FileType            int   `json:"fileType"`
+	Offset              int64 `json:"offset"`
+}
+
+// DownloadPartsOfJobFilesRESTParams holds HEAppE parameters for the REST API
+// allowing to download parts of files
+type DownloadPartsOfJobFilesRESTParams struct {
+	SubmittedJobInfoID int64            `json:"submittedJobInfoId"`
+	TaskFileOffsets    []TaskFileOffset `json:"taskFileOffsets"`
+	SessionCode        string           `json:"sessionCode"`
+}
+
+// JobFileContent holds to response to a partial download of job files
+type JobFileContent struct {
+	Content             string `json:"content"`
+	RelativePath        string `json:"relativePath"`
+	Offset              int64  `json:"offset"`
+	FileType            int    `json:"fileType"`
+	SubmittedTaskInfoID int64  `json:"submittedTaskInfoId"`
 }

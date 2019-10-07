@@ -18,8 +18,6 @@ import (
 	"net/http"
 
 	"github.com/pkg/errors"
-
-	"github.com/ystia/yorc/v4/log"
 )
 
 const (
@@ -29,11 +27,7 @@ const (
 	heappeCancelJobREST     = "/heappe/JobManagement/CancelJob"
 	heappeDeleteJobREST     = "/heappe/JobManagement/DeleteJob"
 	heappeJobInfoREST       = "/heappe/JobManagement/GetCurrentInfoForJob"
-	heappeJobStatePending   = "PENDING"
-	heappeJobStateRunning   = "RUNNING"
-	heappeJobStateCompleted = "COMPLETED"
-	heappeJobStateFailed    = "FAILED"
-	heappeJobStateCanceled  = "CANCELED"
+	heappeDownloadPartsREST = "/heappe/FileTransfer/DownloadPartsOfJobFilesFromCluster"
 )
 
 // HEAppEClient is the client interface to HEAppE service
@@ -42,9 +36,10 @@ type HEAppEClient interface {
 	SubmitJob(jobID int64) error
 	CancelJob(jobID int64) error
 	DeleteJob(jobID int64) error
-	GetJobState(jobID int64) (string, error)
+	GetJobInfo(jobID int64) (SubmittedJobInfo, error)
 	SetSessionID(sessionID string)
 	GetSessionID() string
+	DownloadPartsOfJobFilesFromCluster(JobID int64, offsets []TaskFileOffset) ([]JobFileContent, error)
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
@@ -91,7 +86,7 @@ func (h *heappeClient) CreateJob(job JobSpecification) (int64, error) {
 		JobSpecification: job,
 		SessionCode:      h.sessionID,
 	}
-	var jobResponse JobRESTResponse
+	var jobResponse SubmittedJobInfo
 
 	err = h.httpClient.doRequest(http.MethodPost, heappeCreateJobREST, http.StatusOK, params, &jobResponse)
 	jobID = jobResponse.ID
@@ -118,7 +113,7 @@ func (h *heappeClient) SubmitJob(jobID int64) error {
 		SessionCode:      h.sessionID,
 	}
 
-	var jobResponse JobRESTResponse
+	var jobResponse SubmittedJobInfo
 
 	err := h.httpClient.doRequest(http.MethodPost, heappeSubmitJobREST, http.StatusOK, params, &jobResponse)
 	if err != nil {
@@ -144,7 +139,7 @@ func (h *heappeClient) CancelJob(jobID int64) error {
 		SessionCode:        h.sessionID,
 	}
 
-	var jobResponse JobRESTResponse
+	var jobResponse SubmittedJobInfo
 
 	err := h.httpClient.doRequest(http.MethodPost, heappeCancelJobREST, http.StatusOK, params, &jobResponse)
 	if err != nil {
@@ -180,14 +175,16 @@ func (h *heappeClient) DeleteJob(jobID int64) error {
 	return err
 }
 
-// GetJobState gets a HEAppE job state
-func (h *heappeClient) GetJobState(jobID int64) (string, error) {
+// GetJobInfo gets a HEAppE job info
+func (h *heappeClient) GetJobInfo(jobID int64) (SubmittedJobInfo, error) {
+
+	var jobInfo SubmittedJobInfo
 
 	if h.sessionID == "" {
 		var err error
 		h.sessionID, err = h.authenticate()
 		if err != nil {
-			return heappeJobStateFailed, err
+			return jobInfo, err
 		}
 	}
 
@@ -196,32 +193,38 @@ func (h *heappeClient) GetJobState(jobID int64) (string, error) {
 		SessionCode:        h.sessionID,
 	}
 
-	var jobState string
-	var jobResponse JobRESTResponse
-
-	err := h.httpClient.doRequest(http.MethodPost, heappeJobInfoREST, http.StatusOK, params, &jobResponse)
+	err := h.httpClient.doRequest(http.MethodPost, heappeJobInfoREST, http.StatusOK, params, &jobInfo)
 	if err != nil {
-		return jobState, errors.Wrap(err, "Failed to get job state")
+		err = errors.Wrap(err, "Failed to get job state")
 	}
 
-	stateValue := jobResponse.State
-	switch stateValue {
-	case 0, 1, 2:
-		jobState = heappeJobStatePending
-	case 3:
-		jobState = heappeJobStateRunning
-	case 4:
-		jobState = heappeJobStateCompleted
-	case 5:
-		jobState = heappeJobStateFailed
-	case 6:
-		jobState = heappeJobStateFailed // HEAppE state canceled
-	default:
-		log.Printf("Error getting state for job %d, unexpected state %d, considering it failed", jobID, stateValue)
-		jobState = heappeJobStateFailed
+	return jobInfo, err
+}
+
+func (h *heappeClient) DownloadPartsOfJobFilesFromCluster(jobID int64, offsets []TaskFileOffset) ([]JobFileContent, error) {
+
+	contents := make([]JobFileContent, 0)
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return contents, err
+		}
 	}
 
-	return jobState, err
+	params := DownloadPartsOfJobFilesRESTParams{
+		SubmittedJobInfoID: jobID,
+		TaskFileOffsets:    offsets,
+		SessionCode:        h.sessionID,
+	}
+
+	err := h.httpClient.doRequest(http.MethodPost, heappeDownloadPartsREST, http.StatusOK, params, &contents)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to download part of job outputs")
+	}
+
+	return contents, err
 }
 
 func (h *heappeClient) authenticate() (string, error) {
