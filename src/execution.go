@@ -31,9 +31,11 @@ import (
 )
 
 const (
-	infrastructureType      = "heappe"
-	locationURLPropertyName = "url"
-	jobIDConsulAttribute    = "job_id"
+	infrastructureType                    = "heappe"
+	locationURLPropertyName               = "url"
+	locationJobMonitoringTimeInterval     = "job_monitoring_time_interval"
+	locationDefaultMonitoringTimeInterval = 5 * time.Second
+	jobIDConsulAttribute                  = "job_id"
 )
 
 type execution interface {
@@ -42,13 +44,14 @@ type execution interface {
 }
 
 type jobExecution struct {
-	kv            *api.KV
-	cfg           config.Configuration
-	deploymentID  string
-	taskID        string
-	nodeName      string
-	operationName string
-	jobID         int64
+	kv                     *api.KV
+	cfg                    config.Configuration
+	deploymentID           string
+	taskID                 string
+	nodeName               string
+	operationName          string
+	jobID                  int64
+	MonitoringTimeInterval time.Duration
 }
 
 func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName, operation string) (execution, error) {
@@ -66,13 +69,19 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 		return nil, errors.Errorf("operation %q supported only for nodes derived from %q", operation, heappeJobType)
 	}
 
+	monitoringTimeInterval := cfg.Infrastructures[infrastructureType].GetDuration(locationJobMonitoringTimeInterval)
+	if monitoringTimeInterval <= 0 {
+		// Default value
+		monitoringTimeInterval = locationDefaultMonitoringTimeInterval
+	}
 	exec := &jobExecution{
-		kv:            kv,
-		cfg:           cfg,
-		deploymentID:  deploymentID,
-		taskID:        taskID,
-		nodeName:      nodeName,
-		operationName: operation,
+		kv:                     kv,
+		cfg:                    cfg,
+		deploymentID:           deploymentID,
+		taskID:                 taskID,
+		nodeName:               nodeName,
+		operationName:          operation,
+		MonitoringTimeInterval: monitoringTimeInterval,
 	}
 
 	return exec, err
@@ -94,7 +103,7 @@ func (e *jobExecution) executeAsync(ctx context.Context) (*prov.Action, time.Dur
 	data["jobID"] = strconv.FormatInt(jobID, 10)
 
 	// TODO: use a configurable time duration
-	return &prov.Action{ActionType: "heappe-job-monitoring", Data: data}, 5 * time.Second, err
+	return &prov.Action{ActionType: "heappe-job-monitoring", Data: data}, e.MonitoringTimeInterval, err
 }
 
 func (e *jobExecution) execute(ctx context.Context) error {

@@ -27,15 +27,21 @@ import (
 	"github.com/ystia/yorc/v4/helper/consulutil"
 	"github.com/ystia/yorc/v4/log"
 	"github.com/ystia/yorc/v4/prov"
+	"github.com/ystia/yorc/v4/prov/scheduling"
+)
+
+const (
+	actionDataSessionID = "sessionID"
 )
 
 type actionOperator struct {
 }
 
 type actionData struct {
-	jobID    int64
-	taskID   string
-	nodeName string
+	jobID     int64
+	taskID    string
+	nodeName  string
+	sessionID string
 }
 
 func (o *actionOperator) ExecAction(ctx context.Context, cfg config.Configuration, taskID, deploymentID string, action *prov.Action) (bool, error) {
@@ -86,9 +92,24 @@ func (o *actionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 	if err != nil {
 		return true, err
 	}
+
+	// Set session ID if defined, else a new session will be created
+	actionData.sessionID, ok = action.Data[actionDataSessionID]
+	if ok && actionData.sessionID != "" {
+		heappeClient.SetSessionID(actionData.sessionID)
+	}
+
 	jobState, err := heappeClient.GetJobState(actionData.jobID)
 	if err != nil {
 		return true, err
+	}
+
+	if actionData.sessionID == "" {
+		// Storing the session ID for next job state check
+		err = scheduling.UpdateActionData(nil, action.ID, actionDataSessionID, heappeClient.GetSessionID())
+		if err != nil {
+			return true, errors.Wrapf(err, "failed to update action data for deployment %s node %s", deploymentID, actionData.nodeName)
+		}
 	}
 
 	previousJobState, err := deployments.GetInstanceStateString(consulutil.GetKV(), deploymentID, actionData.nodeName, "0")

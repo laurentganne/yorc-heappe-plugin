@@ -43,6 +43,8 @@ type HEAppEClient interface {
 	CancelJob(jobID int64) error
 	DeleteJob(jobID int64) error
 	GetJobState(jobID int64) (string, error)
+	SetSessionID(sessionID string)
+	GetSessionID() string
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
@@ -62,6 +64,16 @@ type heappeClient struct {
 	auth       Authentication
 	sessionID  string
 	httpClient *httpclient
+}
+
+// SetSessionID sets a HEAppE session ID
+func (h *heappeClient) SetSessionID(sessionID string) {
+	h.sessionID = sessionID
+}
+
+// GetSessionID sets a HEAppE session ID
+func (h *heappeClient) GetSessionID() string {
+	return h.sessionID
 }
 
 // CreateJob creates a HEAppE job
