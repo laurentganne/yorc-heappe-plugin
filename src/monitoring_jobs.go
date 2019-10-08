@@ -171,9 +171,11 @@ func (o *actionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 			deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
 		}
 		// Log job outputs
-		logErr := o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
-		if logErr != nil {
-			log.Printf("Failed to get job outputs : %s", logErr.Error())
+		if jobState == jobStateRunning {
+			logErr := o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
+			if logErr != nil {
+				log.Printf("Failed to get job outputs : %s", logErr.Error())
+			}
 		}
 	}
 
