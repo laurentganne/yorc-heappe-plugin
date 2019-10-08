@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	heappeJobType      = "org.heappe.nodes.Job"
 	installOperation   = "install"
 	uninstallOperation = "uninstall"
 )

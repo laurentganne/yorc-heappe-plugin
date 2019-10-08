@@ -172,6 +172,19 @@ node_types:
           implementation:
             file: "embedded"
             type: org.heappe.artifacts.Deployment
+  org.heappe.nodes.DatasetTransfer:
+    derived_from: tosca.nodes.Root
+    description: >
+      Transfer a dataset to a HEAppEJob input files directory
+    artifacts:
+      - dataset:
+          type: tosca.artifacts.File
+    requirements:
+      - job:
+          capability: org.heappe.capabilities.HeappeJob
+          node: org.heappe.nodes.Job
+          relationship: org.heappe.relationships.DependsOnJob
+          occurrences: [1, 1]
   org.heappe.nodes.GetFilesJob:
     derived_from: org.alien4cloud.nodes.Job
     abstract: true
