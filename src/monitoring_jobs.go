@@ -199,8 +199,9 @@ func (o *actionOperator) getJobOutputs(ctx context.Context, heappeClient HEAppEC
 			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, deploymentID).RegisterAsString("\n" + fileContent.Content)
 
 			// Save the new offset
+			newOffset := fileContent.Offset + int64(len(fileContent.Content))
 			offsetKey := getActionDataOffsetKey(jobInfo.ID, fileContent.SubmittedTaskInfoID, fileContent.FileType)
-			err = scheduling.UpdateActionData(nil, action.ID, offsetKey, strconv.FormatInt(fileContent.Offset, 10))
+			err = scheduling.UpdateActionData(nil, action.ID, offsetKey, strconv.FormatInt(newOffset, 10))
 			if err != nil {
 				return errors.Wrapf(err, "failed to update action data for deployment %s node %s job %d task %d %s",
 					deploymentID, nodeName, jobInfo.ID, fileContent.SubmittedTaskInfoID, fileTypeStr)
