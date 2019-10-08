@@ -135,15 +135,6 @@ func (o *actionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 	if err != nil {
 		return true, errors.Wrapf(err, "failed to get instance state for job %d", actionData.jobID)
 	}
-	if previousJobState != jobState {
-		deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
-	}
-
-	// Log job outputs
-	err = o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
-	if err != nil {
-		log.Printf("Failed to get job outputs : %s", err.Error())
-	}
 
 	// See if monitoring must be continued and set job state if terminated
 	switch jobState {
@@ -160,6 +151,30 @@ func (o *actionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelERROR, deploymentID).RegisterAsString(fmt.Sprintf("job state:%+v", jobState))
 		// Error to be returned
 		err = errors.Errorf("job with ID: %d finished unsuccessfully with state: %q", actionData.jobID, jobState)
+	}
+
+	// If the job state is a final state, print job logs before printing the state change
+	if deregister {
+		// Log job outputs
+		logErr := o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
+		if logErr != nil {
+			log.Printf("Failed to get job outputs : %s", logErr.Error())
+		}
+		// Print state change
+		if previousJobState != jobState {
+			deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
+		}
+
+	} else {
+		// Print state change
+		if previousJobState != jobState {
+			deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
+		}
+		// Log job outputs
+		logErr := o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
+		if logErr != nil {
+			log.Printf("Failed to get job outputs : %s", logErr.Error())
+		}
 	}
 
 	return deregister, err
