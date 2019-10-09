@@ -48,11 +48,13 @@ data_types:
         type: list
         entry_schema:
           type: org.heappe.types.CommandTemplateParameterValue
+        required: false
       environmentVariables:
         description: Environment variables
         type: list
         entry_schema:
           type: org.heappe.types.EnvironmentVariable
+        required: false
       minCores:
         description: Minimum number of cores required
         type: integer
@@ -128,14 +130,6 @@ node_types:
     description: >
       HEAppE Job (abstract)
     properties:
-      user:
-        description: User used to connect to HEAppE Middleware
-        type: string
-        required: true
-      password:
-        description: Password used to connect to HEAppE Middleware
-        type: string
-        required: true
       jobSpecification:
         description: Specification of the job to create
         type: org.heappe.types.JobSpecification
@@ -148,10 +142,6 @@ node_types:
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
-  org.heappe.nodes.Job:
-    derived_from: org.heappe.nodes.pub.Job
-    description: >
-      HEAppE Job
     interfaces:
       Standard:
         create:
@@ -175,29 +165,57 @@ node_types:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
-  org.heappe.nodes.DatasetTransfer:
-    derived_from: tosca.nodes.Root
+  org.heappe.nodes.Job:
+    derived_from: org.heappe.nodes.pub.Job
     description: >
-      Transfer a dataset to a HEAppEJob input files directory
+      HEAppE Job
+    properties:
+      user:
+        description: User used to connect to HEAppE Middleware
+        type: string
+        required: true
+      password:
+        description: Password used to connect to HEAppE Middleware
+        type: string
+        required: true
+  org.heappe.nodes.pub.DatasetTransfer:
+    derived_from: tosca.nodes.Root
+    abstract: true
+    description: >
+      Transfer a dataset to a HEAppEJob input files directory (abstract)
     artifacts:
       - dataset:
           type: tosca.artifacts.File
+          file: heappe-types-a4c.yaml
     requirements:
       - job:
           capability: org.heappe.capabilities.HeappeJob
-          node: org.heappe.nodes.Job
+          node: org.heappe.nodes.pub.Job
           relationship: org.heappe.relationships.DependsOnJob
           occurrences: [1, 1]
-  org.heappe.nodes.GetFilesJob:
-    derived_from: org.alien4cloud.nodes.Job
+    interfaces:
+      Standard:
+        create:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+        delete:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+  org.heappe.nodes.DatasetTransfer:
+    derived_from: org.heappe.nodes.pub.DatasetTransfer
     description: >
-      Get files produced by a HEAppEJob
-    requirements:
-      - job:
-          capability: org.heappe.capabilities.HeappeJob
-          node: org.heappe.nodes.Job
-          relationship: org.heappe.relationships.DependsOnJob
-          occurrences: [1, 1]
+      Transfer a dataset to a HEAppEJob input files directory
+    properties:
+      user:
+        description: User used to connect to HEAppE Middleware
+        type: string
+        required: true
+      password:
+        description: Password used to connect to HEAppE Middleware
+        type: string
+        required: true
 
 capability_types:
   org.heappe.capabilities.HeappeJob:
@@ -209,4 +227,4 @@ relationship_types:
   org.heappe.relationships.DependsOnJob:
     derived_from: tosca.relationships.DependsOn
     description: Relationship between a component and a HEAppE job
-    valid_target_types: [ org.heappe.nodes.Job ]
+    valid_target_types: [ org.heappe.nodes.pub.Job ]

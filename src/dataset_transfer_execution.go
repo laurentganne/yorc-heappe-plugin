@@ -64,5 +64,5 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 }
 
 func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
-	return nil
+	return errors.Errorf("TransferDataset not yet implemented")
 }

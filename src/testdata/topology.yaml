@@ -15,20 +15,13 @@ imports:
   - heappe-types:0.1.0
 
 topology_template:
-  inputs:
-    user:
-      type: string
-      required: true
-      description: "User of HEAppE Middleware"
-    password:
-      type: string
-      required: true
+  input_artifacts:
+    dataset:
+        type: tosca.artifacts.File
   node_templates:
     HEAppEJob:
-      type: org.heappe.nodes.Job
+      type: org.heappe.nodes.pub.Job
       properties:
-        user: { get_input: user }
-        password: { get_input: password }
         jobSpecification: 
           name: testJobName
           project: testProjectName
@@ -51,4 +44,121 @@ topology_template:
               standardErrorFile: "console_Stderr"
               progressFile: "console_Stdprog"
               logFile: "console_Stdlog"
-
+    DatasetTransfer:
+      type: org.heappe.nodes.pub.DatasetTransfer
+      artifacts:
+        dataset:
+          file: { get_input_artifact: dataset }
+          type: tosca.artifacts.File
+      requirements:
+        - dependsOnbHeappejob:
+            type_requirement: job
+            node: HEAppEJob
+            capability: org.heappe.capabilities.HeappeJob
+            relationship: org.heappe.relationships.DependsOnJob
+  workflows:
+    install:
+      steps:
+        Job_install:
+          target: HEAppEJob
+          activities:
+            - delegate: install
+          on_success:
+            - DatasetTransfer_install
+        DatasetTransfer_install:
+          target: DatasetTransfer
+          activities:
+            - delegate: install
+    uninstall:
+      steps:
+        Job_uninstall:
+          target: HEAppEJob
+          activities:
+            - delegate: uninstall
+        DatasetTransfer_uninstall:
+          target: DatasetTransfer
+          activities:
+            - delegate: uninstall
+          on_success:
+            - Job_uninstall
+    start:
+      steps:
+        Job_start:
+          target: HEAppEJob
+          activities:
+            - delegate: start
+          on_success:
+            - DatasetTransfer_start
+        DatasetTransfer_start:
+          target: DatasetTransfer
+          activities:
+            - delegate: start
+    stop:
+      steps:
+        Job_stop:
+          target: HEAppEJob
+          activities:
+            - delegate: stop
+        DatasetTransfer_stop:
+          target: DatasetTransfer
+          activities:
+            - delegate: stop
+          on_success:
+            - Job_stop
+    run:
+      steps:
+        Job_run:
+          target: HEAppEJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Job_executed
+        Job_submitted:
+          target: HEAppEJob
+          activities:
+            - set_state: submitted
+          on_success:
+            - Job_executing
+        Job_submitting:
+          target: HEAppEJob
+          activities:
+            - set_state: submitting
+          on_success:
+            - Job_submit
+        Job_executed:
+          target: HEAppEJob
+          activities:
+            - set_state: executed
+        Job_submit:
+          target: HEAppEJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Job_submitted
+        Job_executing:
+          target: HEAppEJob
+          activities:
+            - set_state: executing
+          on_success:
+            - Job_run
+    cancel:
+      steps:
+        Job_cancelled:
+          target: HEAppEJob
+          activities:
+            - set_state: cancelled
+        Job_cancel:
+          target: HEAppEJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.cancel
+          on_success:
+            - Job_cancelled
+        Job_cancelling:
+          target: HEAppEJob
+          activities:
+            - set_state: cancelling
+          on_success:
+            - Job_cancel
