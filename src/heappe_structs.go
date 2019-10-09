@@ -18,6 +18,14 @@ const (
 	jobSpecificationProperty = "jobSpecification"
 )
 
+// Protocole used to transfer files to the HPC cluster
+type FileTransferProtocol int
+
+const (
+	NetworkShare FileTransferProtocol = iota
+	SftpScp
+)
+
 // PasswordCredentials holds user/password to perform a basic authentication
 type PasswordCredentials struct {
 	Username string `json:"username"`
@@ -158,11 +166,34 @@ type DownloadPartsOfJobFilesRESTParams struct {
 	SessionCode        string           `json:"sessionCode"`
 }
 
-// JobFileContent holds to response to a partial download of job files
+// JobFileContent holds the response to a partial download of job files
 type JobFileContent struct {
 	Content             string `json:"content"`
 	RelativePath        string `json:"relativePath"`
 	Offset              int64  `json:"offset"`
 	FileType            int    `json:"fileType"`
 	SubmittedTaskInfoID int64  `json:"submittedTaskInfoId"`
+}
+
+// AsymmetricKeyCredentials hold credentials used to transfer files to the HPC cluster
+type AsymmetricKeyCredentials struct {
+	Username   string `json:"username"`
+	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey"`
+}
+
+// FileTransferMethod holds properties allowing to transfer files to the HPC cluster
+type FileTransferMethod struct {
+	ServerHostname string                   `json:"serverHostname"`
+	SharedBasepath string                   `json:"sharedBasepath"`
+	Protocol       FileTransferProtocol     `json:"protocol"`
+	Credentials    AsymmetricKeyCredentials `json:"credentials"`
+}
+
+// EndFileTransferRESTParams holds paremeters used in the REST API call to notify
+// the end of files trasnfer
+type EndFileTransferRESTParams struct {
+	SubmittedJobInfoID int64              `json:"submittedJobInfoId"`
+	UsedTransferMethod FileTransferMethod `json:"usedTransferMethod"`
+	SessionCode        string             `json:"sessionCode"`
 }

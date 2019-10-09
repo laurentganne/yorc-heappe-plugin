@@ -21,13 +21,15 @@ import (
 )
 
 const (
-	heappeAuthREST          = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
-	heappeCreateJobREST     = "/heappe/JobManagement/CreateJob"
-	heappeSubmitJobREST     = "/heappe/JobManagement/SubmitJob"
-	heappeCancelJobREST     = "/heappe/JobManagement/CancelJob"
-	heappeDeleteJobREST     = "/heappe/JobManagement/DeleteJob"
-	heappeJobInfoREST       = "/heappe/JobManagement/GetCurrentInfoForJob"
-	heappeDownloadPartsREST = "/heappe/FileTransfer/DownloadPartsOfJobFilesFromCluster"
+	heappeAuthREST                  = "/heappe/UserAndLimitationManagement/AuthenticateUserPassword"
+	heappeCreateJobREST             = "/heappe/JobManagement/CreateJob"
+	heappeSubmitJobREST             = "/heappe/JobManagement/SubmitJob"
+	heappeCancelJobREST             = "/heappe/JobManagement/CancelJob"
+	heappeDeleteJobREST             = "/heappe/JobManagement/DeleteJob"
+	heappeJobInfoREST               = "/heappe/JobManagement/GetCurrentInfoForJob"
+	heappeDownloadPartsREST         = "/heappe/FileTransfer/DownloadPartsOfJobFilesFromCluster"
+	heappeGetFileTransferMethodREST = "/heappe/FileTransfer/GetFileTransferMethod"
+	heappeEndFileTransferREST       = "/heappe/FileTransfer/EndFileTransfer"
 )
 
 // HEAppEClient is the client interface to HEAppE service
@@ -40,6 +42,8 @@ type HEAppEClient interface {
 	SetSessionID(sessionID string)
 	GetSessionID() string
 	DownloadPartsOfJobFilesFromCluster(JobID int64, offsets []TaskFileOffset) ([]JobFileContent, error)
+	GetFileTransferMethod(jobID int64) (FileTransferMethod, error)
+	EndFileTransfer(jobID int64, ft FileTransferMethod) error
 }
 
 // NewBasicAuthClient returns a client performing a basic user/pasword authentication
@@ -225,6 +229,57 @@ func (h *heappeClient) DownloadPartsOfJobFilesFromCluster(jobID int64, offsets [
 	}
 
 	return contents, err
+}
+
+func (h *heappeClient) GetFileTransferMethod(jobID int64) (FileTransferMethod, error) {
+
+	var transferMethod FileTransferMethod
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return transferMethod, err
+		}
+	}
+
+	params := JobInfoRESTParams{
+		SubmittedJobInfoID: jobID,
+		SessionCode:        h.sessionID,
+	}
+
+	err := h.httpClient.doRequest(http.MethodPost, heappeGetFileTransferMethodREST, http.StatusOK, params, &transferMethod)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to download part of job outputs")
+	}
+
+	return transferMethod, err
+
+}
+
+func (h *heappeClient) EndFileTransfer(jobID int64, ft FileTransferMethod) error {
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return err
+		}
+	}
+
+	params := EndFileTransferRESTParams{
+		SubmittedJobInfoID: jobID,
+		UsedTransferMethod: ft,
+		SessionCode:        h.sessionID,
+	}
+
+	var result string
+	err := h.httpClient.doRequest(http.MethodPost, heappeEndFileTransferREST, http.StatusOK, params, &result)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to download part of job outputs")
+	}
+
+	return err
+
 }
 
 func (h *heappeClient) authenticate() (string, error) {
