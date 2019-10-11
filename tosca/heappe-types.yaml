@@ -166,15 +166,6 @@ node_types:
     derived_from: org.heappe.nodes.pub.Job
     description: >
       HEAppE Job
-    properties:
-      user:
-        description: User used to connect to HEAppE Middleware
-        type: string
-        required: true
-      password:
-        description: Password used to connect to HEAppE Middleware
-        type: string
-        required: true
   org.heappe.nodes.pub.DatasetTransfer:
     derived_from: tosca.nodes.Root
     abstract: true
@@ -193,6 +184,8 @@ node_types:
     interfaces:
       Standard:
         create:
+          inputs:
+            JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
           implementation:
             file: "embedded"
             type: org.heappe.artifacts.Deployment
@@ -204,15 +197,6 @@ node_types:
     derived_from: org.heappe.nodes.pub.DatasetTransfer
     description: >
       Transfer a dataset to a HEAppEJob input files directory
-    properties:
-      user:
-        description: User used to connect to HEAppE Middleware
-        type: string
-        required: true
-      password:
-        description: Password used to connect to HEAppE Middleware
-        type: string
-        required: true
 
 capability_types:
   org.heappe.capabilities.HeappeJob:

@@ -20,7 +20,7 @@ topology_template:
         type: tosca.artifacts.File
   node_templates:
     HEAppEJob:
-      type: org.heappe.nodes.pub.Job
+      type: org.heappe.nodes.Job
       properties:
         jobSpecification: 
           name: testJobName
@@ -45,7 +45,7 @@ topology_template:
               progressFile: "console_Stdprog"
               logFile: "console_Stdlog"
     DatasetTransfer:
-      type: org.heappe.nodes.pub.DatasetTransfer
+      type: org.heappe.nodes.DatasetTransfer
       artifacts:
         dataset:
           file: { get_input_artifact: dataset }

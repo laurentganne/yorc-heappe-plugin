@@ -33,7 +33,7 @@ type operationExecutor struct{}
 
 func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation, stepName string) (*prov.Action, time.Duration, error) {
 
-	exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation.Name)
+	exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -43,7 +43,7 @@ func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.C
 
 func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation) error {
 
-	log.Debugf("Executing operation %q", operation.Name)
+	log.Debugf("Executing operation %q", operation)
 
 	var err error
 	operationName := strings.ToLower(operation.Name)
@@ -56,7 +56,7 @@ func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Config
 	case "standard.delete":
 		err = new(delegateExecutor).ExecDelegate(ctx, cfg, taskID, deploymentID, nodeName, "uninstall")
 	default:
-		exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operationName)
+		exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
 		if err != nil {
 			break
 		}

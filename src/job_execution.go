@@ -35,14 +35,14 @@ type jobExecution struct {
 	deploymentID           string
 	taskID                 string
 	nodeName               string
-	operationName          string
+	operation              prov.Operation
 	jobID                  int64
 	MonitoringTimeInterval time.Duration
 }
 
 func (e *jobExecution) executeAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
-	if e.operationName != tosca.RunnableRunOperationName {
-		return nil, 0, errors.Errorf("Unsupported asynchronous operation %q", e.operationName)
+	if e.operation.Name != tosca.RunnableRunOperationName {
+		return nil, 0, errors.Errorf("Unsupported asynchronous operation %q", e.operation.Name)
 	}
 
 	jobID, err := e.getJobID()
@@ -62,7 +62,7 @@ func (e *jobExecution) executeAsync(ctx context.Context) (*prov.Action, time.Dur
 func (e *jobExecution) execute(ctx context.Context) error {
 
 	var err error
-	switch e.operationName {
+	switch e.operation.Name {
 	case installOperation:
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 			"Creating Job %q", e.nodeName)
@@ -100,10 +100,14 @@ func (e *jobExecution) execute(ctx context.Context) error {
 
 		}
 	default:
-		err = errors.Errorf("Unsupported operation %q", e.operationName)
+		err = errors.Errorf("Unsupported operation %q", e.operation.Name)
 	}
 
 	return err
+}
+
+func (e *jobExecution) resolveExecution() error {
+	return nil
 }
 
 func (e *jobExecution) createJob(ctx context.Context) error {

@@ -21,6 +21,7 @@ import (
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/log"
+	"github.com/ystia/yorc/v4/prov"
 	"github.com/ystia/yorc/v4/tasks"
 	"github.com/ystia/yorc/v4/tosca"
 )
@@ -48,7 +49,9 @@ func (de *delegateExecutor) ExecDelegate(ctx context.Context, cfg config.Configu
 		deployments.SetInstanceStateWithContextualLogs(ctx, kv, deploymentID, nodeName, instanceName, tosca.NodeStateCreating)
 	}
 
-	operation := strings.ToLower(delegateOperation)
+	operation := prov.Operation{
+		Name: strings.ToLower(delegateOperation),
+	}
 	exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
 	if err != nil {
 		return err
