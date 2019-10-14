@@ -1,7 +1,7 @@
 tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
-  template_name: HEAppETest
+  template_name: HEAppETransferTest
   template_version: 0.1.0-SNAPSHOT
   template_author: yorc
 
@@ -190,3 +190,42 @@ topology_template:
             - set_state: cancelling
           on_success:
             - Job_cancel
+    transfer_delegate_test:
+      steps:
+        SendDataset_test:
+          target: SendDataset
+          activities:
+            - delegate: install
+    transfer_operation_test:
+      steps:
+        SendDatasetOp_test:
+          target: SendDataset
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+    customTest:
+      steps:
+        HEAppEJob_create:
+          target: HEAppEJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - HEAppEJob_started
+        HEAppEJob_started:
+          target: HEAppEJob
+          activities:
+            - set_state: started
+          on_success:
+            - SendDataset_create
+        SendDataset_create:
+          target: SendDataset
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - SendDataset_started
+        SendDataset_started:
+          target: SendDataset
+          activities:
+            - set_state: started

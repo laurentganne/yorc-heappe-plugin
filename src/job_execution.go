@@ -63,7 +63,7 @@ func (e *jobExecution) execute(ctx context.Context) error {
 
 	var err error
 	switch e.operation.Name {
-	case installOperation:
+	case installOperation, "standard.create":
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 			"Creating Job %q", e.nodeName)
 		err = e.createJob(ctx)
@@ -72,7 +72,7 @@ func (e *jobExecution) execute(ctx context.Context) error {
 				"Failed to create Job %q, error %s", e.nodeName, err.Error())
 
 		}
-	case uninstallOperation:
+	case uninstallOperation, "standard.delete":
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 			"Deleting Job %q", e.nodeName)
 		err = e.deleteJob(ctx)

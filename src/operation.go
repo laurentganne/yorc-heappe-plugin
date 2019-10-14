@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/ystia/yorc/v4/config"
@@ -43,26 +42,18 @@ func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.C
 
 func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation) error {
 
-	log.Debugf("Executing operation %q", operation)
+	log.Debugf("Executing operation %+v", operation)
 
-	var err error
-	operationName := strings.ToLower(operation.Name)
+	//var err error
+	// operationName := strings.ToLower(operation.Name)
 
 	// create/delete operations are managed by the Delegate Executor
 
-	switch operationName {
-	case "standard.create":
-		err = new(delegateExecutor).ExecDelegate(ctx, cfg, taskID, deploymentID, nodeName, "install")
-	case "standard.delete":
-		err = new(delegateExecutor).ExecDelegate(ctx, cfg, taskID, deploymentID, nodeName, "uninstall")
-	default:
-		exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
-		if err != nil {
-			break
-		}
-
-		err = exec.execute(ctx)
+	exec, err := newExecution(ctx, cfg, taskID, deploymentID, nodeName, operation)
+	if err != nil {
+		return err
 	}
 
+	err = exec.execute(ctx)
 	return err
 }

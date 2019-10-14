@@ -169,7 +169,7 @@ node_types:
     derived_from: org.heappe.nodes.pub.Job
     description: >
       HEAppE Job
-  org.heappe.nodes.pub.DatasetTransfer:
+  org.heappe.nodes.pub.SendDataset:
     derived_from: tosca.nodes.Root
     abstract: true
     description: >
@@ -196,10 +196,44 @@ node_types:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
-  org.heappe.nodes.DatasetTransfer:
-    derived_from: org.heappe.nodes.pub.DatasetTransfer
+  org.heappe.nodes.SendDataset:
+    derived_from: org.heappe.nodes.pub.SendDataset
     description: >
       Transfer a dataset to a HEAppEJob input files directory
+
+  org.heappe.nodes.pub.GetResultFiles:
+    derived_from: tosca.nodes.Root
+    abstract: true
+    description: >
+      Get result files from a HEAppEJob (abstract) 
+    attributes:
+      zipped_result_file:
+        type: string
+        description: >
+          Zip file containing results retrieved from the job
+    requirements:
+      - job:
+          capability: org.heappe.capabilities.HeappeJob
+          node: org.heappe.nodes.Job
+          relationship: org.heappe.relationships.DependsOnJob
+          occurrences: [1, 1]
+    interfaces:
+      Standard:
+        create:
+          inputs:
+            JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
+          implementation:
+            file: "embedded"
+            type: org.heappe.artifacts.Deployment
+        delete:
+          implementation:
+            file: "embedded"
+            type: org.heappe.artifacts.Deployment
+  org.heappe.nodes.GetResultFiles:
+    derived_from: org.heappe.nodes.pub.GetResultFiles
+    description: >
+      Get result files from a HEAppEJob
+
 capability_types:
   org.heappe.capabilities.HeappeJob:
     derived_from: tosca.capabilities.Root

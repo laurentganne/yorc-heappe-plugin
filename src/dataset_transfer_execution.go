@@ -60,7 +60,7 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 
 	var err error
 	switch e.operation.Name {
-	case installOperation:
+	case installOperation, "standard.create":
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 			"Starting dataset transfer %q", e.nodeName)
 		err = e.transferDataset(ctx)
@@ -69,7 +69,7 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 				"Dataset transfer %q failed, error %s", e.nodeName, err.Error())
 
 		}
-	case uninstallOperation:
+	case uninstallOperation, "standard.delete":
 		// Nothing to do
 	default:
 		err = errors.Errorf("Unsupported operation %q on dataset transfer", e.operation.Name)
@@ -108,18 +108,24 @@ func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
 		return err
 	}
 
+	defer func() {
+		heappeClient.EndFileTransfer(jobID, transferMethod)
+	}()
+
 	clientConfig, err := getSSHClientConfig(transferMethod.Credentials.Username,
 		transferMethod.Credentials.PrivateKey)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create a SSH client using HEAppE file transfer credentials")
 	}
 
-	client := scp.NewClient(transferMethod.ServerHostname, &clientConfig)
+	client := scp.NewClient(transferMethod.ServerHostname+":22", &clientConfig)
 
 	// Connect to the remote server
 	err = client.Connect()
 	if err != nil {
-		return errors.Wrapf(err, "Failed to connect to remote server using HEAppE file transfer credentials")
+		// TODO: uncomment this error when it will work
+		// return errors.Wrapf(err, "Failed to connect to remote server using HEAppE file transfer credentials")
+		log.Printf("!!!! ERROR connection to transfer files failed: %+s", err.Error())
 	}
 	defer client.Close()
 

@@ -1,7 +1,7 @@
 tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
-  template_name: HEAppETest
+  template_name: HEAppEJobTest
   template_version: 0.1.0-SNAPSHOT
   template_author: yorc
 
@@ -44,18 +44,6 @@ topology_template:
               standardErrorFile: "console_Stderr"
               progressFile: "console_Stdprog"
               logFile: "console_Stdlog"
-    SendDataset:
-      type: org.heappe.nodes.SendDataset
-      artifacts:
-        dataset:
-          file: { get_input_artifact: dataset }
-          type: tosca.artifacts.File
-      requirements:
-        - dependsOnbHeappejob:
-            type_requirement: job
-            node: HEAppEJob
-            capability: org.heappe.capabilities.HeappeJob
-            relationship: org.heappe.relationships.DependsOnJob
   workflows:
     install:
       steps:
@@ -70,34 +58,8 @@ topology_template:
           target: HEAppEJob
           activities:
             - set_state: started
-          on_success:
-            - SendDataset_create
-        SendDataset_create:
-          target: SendDataset
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.create
-          on_success:
-            - SendDataset_started
-        SendDataset_started:
-          target: SendDataset
-          activities:
-            - set_state: started
     uninstall:
       steps:
-        SendDataset_delete:
-          target: SendDataset
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.delete
-          on_success:
-            - SendDataset_deleted
-        SendDataset_deleted:
-          target: SendDataset
-          activities:
-            - set_state: started
-          on_success:
-            - HEAppEJob_delete
         HEAppEJob_delete:
           target: HEAppEJob
           operation_host: ORCHESTRATOR
@@ -115,24 +77,12 @@ topology_template:
           target: HEAppEJob
           activities:
             - delegate: start
-          on_success:
-            - SendDataset_start
-        SendDataset_start:
-          target: SendDataset
-          activities:
-            - delegate: start
     stop:
       steps:
         Job_stop:
           target: HEAppEJob
           activities:
             - delegate: stop
-        SendDataset_stop:
-          target: SendDataset
-          activities:
-            - delegate: stop
-          on_success:
-            - Job_stop
     run:
       steps:
         Job_run:
