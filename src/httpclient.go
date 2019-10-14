@@ -16,10 +16,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -34,11 +37,20 @@ type httpclient struct {
 
 func getHTTPClient(URL string) *httpclient {
 
-	return &httpclient{
-		baseURL: URL,
-		Client:  &http.Client{},
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
 
+	return &httpclient{
+		baseURL: URL,
+		Client:  &http.Client{Transport: tr},
+	}
 }
 
 // NewRequest returns a new HTTP request
@@ -53,6 +65,7 @@ func (c *httpclient) doRequest(method, path string, expectedStatus int, payload,
 		return err
 	}
 
+	// TODO use debug
 	log.Debugf("Sending request %s to %s", method, c.baseURL+path)
 
 	request, err := c.newRequest(method, path, bytes.NewBuffer(jsonParam))
@@ -63,10 +76,11 @@ func (c *httpclient) doRequest(method, path string, expectedStatus int, payload,
 	request.Header.Add("Accept", "application/json")
 
 	response, err := c.Do(request)
-	defer response.Body.Close()
 	if err != nil {
 		return err
 	}
+
+	defer response.Body.Close()
 
 	if response.StatusCode != expectedStatus {
 		return errors.Errorf("Expected HTTP Status code %d, got %d, reason %q",
