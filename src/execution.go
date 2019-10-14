@@ -22,6 +22,7 @@ import (
 
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
+	"github.com/ystia/yorc/v4/locations"
 	"github.com/ystia/yorc/v4/prov"
 )
 
@@ -59,7 +60,17 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 	}
 
 	if isJob {
-		monitoringTimeInterval := cfg.Infrastructures[infrastructureType].GetDuration(locationJobMonitoringTimeInterval)
+		locationMgr, err := locations.GetManager(cfg)
+		if err != nil {
+			return nil, err
+		}
+		locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
+			nodeName, infrastructureType)
+		if err != nil {
+			return nil, err
+		}
+
+		monitoringTimeInterval := locationProps.GetDuration(locationJobMonitoringTimeInterval)
 		if monitoringTimeInterval <= 0 {
 			// Default value
 			monitoringTimeInterval = locationDefaultMonitoringTimeInterval
@@ -102,20 +113,28 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 
 func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (HEAppEClient, error) {
 
-	url := cfg.Infrastructures[infrastructureType].GetString(locationURLPropertyName)
+	locationMgr, err := locations.GetManager(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
+		nodeName, infrastructureType)
+	if err != nil {
+		return nil, err
+	}
+
+	url := locationProps.GetString(locationURLPropertyName)
 	if url == "" {
 		return nil, errors.Errorf("No URL defined in HEAppE location configuration")
 	}
+	username := locationProps.GetString("user")
+	if username == "" {
+		return nil, errors.Errorf("No user defined in deployment %s node %s",
+			deploymentID, nodeName)
 
-	user := cfg.Infrastructures[infrastructureType].GetString(locationUserPropertyName)
-	if url == "" {
-		return nil, errors.Errorf("No user defined in HEAppE location configuration")
 	}
+	password := locationProps.GetString("password")
 
-	password := cfg.Infrastructures[infrastructureType].GetString(locationPasswordPropertyName)
-	if url == "" {
-		return nil, errors.Errorf("No password defined in HEAppE location configuration")
-	}
-
-	return NewBasicAuthClient(url, user, password), nil
+	return NewBasicAuthClient(url, username, password), err
 }
