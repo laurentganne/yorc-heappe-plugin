@@ -206,11 +206,11 @@ node_types:
     abstract: true
     description: >
       Get result files from a HEAppEJob (abstract) 
-    attributes:
-      zipped_result_file:
+    properties:
+      zip_result:
         type: string
         description: >
-          Zip file containing results retrieved from the job
+          Name of Zip file containing results files retrieved from the job
     requirements:
       - job:
           capability: org.heappe.capabilities.HeappeJob
@@ -223,12 +223,12 @@ node_types:
           inputs:
             JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
           implementation:
-            file: "embedded"
-            type: org.heappe.artifacts.Deployment
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
         delete:
           implementation:
-            file: "embedded"
-            type: org.heappe.artifacts.Deployment
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
   org.heappe.nodes.GetResultFiles:
     derived_from: org.heappe.nodes.pub.GetResultFiles
     description: >

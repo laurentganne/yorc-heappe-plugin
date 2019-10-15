@@ -56,20 +56,54 @@ topology_template:
             node: HEAppEJob
             capability: org.heappe.capabilities.HeappeJob
             relationship: org.heappe.relationships.DependsOnJob
+    GetResults:
+      type: org.heappe.nodes.GetResultFiles
+      properties:
+        zip_result: testresult.zip
+      requirements:
+        - dependsOnbHeappejob:
+            type_requirement: job
+            node: HEAppEJob
+            capability: org.heappe.capabilities.HeappeJob
+            relationship: org.heappe.relationships.DependsOnJob
   workflows:
     install:
       steps:
+        HEAppEJob_initial:
+          target: HEAppEJob
+          activities:
+            - set_state: initial
+          on_success:
+            - HEAppEJob_creating
+        HEAppEJob_creating:
+          target: HEAppEJob
+          activities:
+            - set_state: creating
+          on_success:
+            - HEAppEJob_create
         HEAppEJob_create:
           target: HEAppEJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
           on_success:
-            - HEAppEJob_started
-        HEAppEJob_started:
+            - HEAppEJob_created
+        HEAppEJob_created:
           target: HEAppEJob
           activities:
-            - set_state: started
+            - set_state: created
+          on_success:
+            - SendDataset_initial
+        SendDataset_initial:
+          target: SendDataset
+          activities:
+            - set_state: initial
+          on_success:
+            - SendDataset_creating
+        SendDataset_creating:
+          target: SendDataset
+          activities:
+            - set_state: creating
           on_success:
             - SendDataset_create
         SendDataset_create:
@@ -200,6 +234,13 @@ topology_template:
       steps:
         SendDatasetOp_test:
           target: SendDataset
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+    result_operation_test:
+      steps:
+        GetResultsOp_test:
+          target: GetResults
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create

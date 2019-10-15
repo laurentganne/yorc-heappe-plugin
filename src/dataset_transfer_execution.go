@@ -16,7 +16,10 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -27,6 +30,7 @@ import (
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/events"
+	"github.com/ystia/yorc/v4/helper/ziputil"
 	"github.com/ystia/yorc/v4/log"
 	"github.com/ystia/yorc/v4/prov"
 	"github.com/ystia/yorc/v4/prov/operations"
@@ -34,10 +38,19 @@ import (
 )
 
 const (
-	jobIDEnvVar = "JOB_ID"
+	jobIDEnvVar       = "JOB_ID"
+	zipResultProperty = "zip_result"
+)
+
+type direction int
+
+const (
+	send direction = iota
+	receive
 )
 
 type datasetTransferExecution struct {
+	direction      direction
 	kv             *api.KV
 	cfg            config.Configuration
 	deploymentID   string
@@ -63,7 +76,11 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 	case installOperation, "standard.create":
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 			"Starting dataset transfer %q", e.nodeName)
-		err = e.transferDataset(ctx)
+		if e.direction == send {
+			err = e.transferDataset(ctx)
+		} else {
+			err = e.getResultFiles(ctx)
+		}
 		if err != nil {
 			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 				"Dataset transfer %q failed, error %s", e.nodeName, err.Error())
@@ -124,17 +141,17 @@ func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
 	err = client.Connect()
 	if err != nil {
 		// TODO: uncomment this error when it will work
-		// return errors.Wrapf(err, "Failed to connect to remote server using HEAppE file transfer credentials")
-		log.Printf("!!!! ERROR connection to transfer files failed: %+s", err.Error())
+		return errors.Wrapf(err, "Failed to connect to remote server using HEAppE file transfer credentials")
 	}
 	defer client.Close()
 
 	// Transfer each file in the dataset
 	for _, filename := range fileNames {
 
-		f, err := os.Open(filename)
+		absolutePath := filepath.Join(e.overlayPath, filename)
+		f, err := os.Open(absolutePath)
 		if err != nil {
-			return errors.Wrapf(err, "Failed to open dataset file %s", filename)
+			return errors.Wrapf(err, "Failed to open dataset file %s", absolutePath)
 		}
 		defer f.Close()
 
@@ -163,6 +180,106 @@ func (e *datasetTransferExecution) getDatasetFileNames() ([]string, error) {
 	fileNames = []string{datasetFileName}
 
 	return fileNames, nil
+}
+
+func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
+
+	// Get the name of archive to create
+	archiveName, err := deployments.GetStringNodePropertyValue(e.kv, e.deploymentID,
+		e.nodeName, zipResultProperty)
+	if err != nil {
+		return err
+	}
+
+	if archiveName == "" {
+		// nothing to do
+		return err
+	}
+
+	// Get details on remote host where to get result files
+	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
+	if err != nil {
+		return err
+	}
+
+	jobIDStr := e.getValueFromEnvInputs(jobIDEnvVar)
+	if jobIDStr == "" {
+		return errors.Errorf("Failed to get associated job ID")
+	}
+	jobID, err := strconv.ParseInt(jobIDStr, 10, 64)
+	if err != nil {
+		err = errors.Wrapf(err, "Unexpected Job ID value %q for deployment %s node %s",
+			jobIDStr, e.deploymentID, e.nodeName)
+		return err
+	}
+
+	// Get list of result files
+	filenames, err := heappeClient.ListChangedFilesForJob(jobID)
+	if err != nil {
+		return err
+	}
+
+	// TODO: use debug mode
+	log.Printf("Result files for deployment %s node %d : %+v", e.deploymentID, e.nodeName, filenames)
+
+	if len(filenames) == 0 {
+		// Nothing to do
+		return err
+	}
+
+	transferMethod, err := heappeClient.GetFileTransferMethod(jobID)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		heappeClient.EndFileTransfer(jobID, transferMethod)
+	}()
+
+	// go-scp is not yet providing the copy from remote
+	// see pull request https://github.com/bramvdbogaerde/go-scp/pull/12
+	// In the meantime using scp command
+	// Creating the private key file
+	pkeyFile := filepath.Join(e.overlayPath, fmt.Sprint("heappepkey_%d", jobID))
+	err = ioutil.WriteFile(pkeyFile, []byte(transferMethod.Credentials.PrivateKey), 0400)
+	if err != nil {
+		return err
+	}
+
+	copyDir := filepath.Join(e.overlayPath, fmt.Sprint("heapperesults_%d", jobID))
+	err = os.Mkdir(copyDir, 0700)
+	if err != nil {
+		return err
+	}
+
+	defer os.RemoveAll(copyDir)
+
+	// Transfer each file in the dataset
+	for _, filename := range filenames {
+
+		remotePath := filepath.Join(transferMethod.SharedBasepath, filename)
+		localPath := filepath.Join(copyDir, filename)
+		copyCmd := exec.Command("/bin/scp", "-i", pkeyFile,
+			fmt.Sprintf("%s@%s:%s",
+				transferMethod.Credentials.Username,
+				transferMethod.ServerHostname,
+				remotePath),
+			localPath)
+		stdoutStderr, err := copyCmd.CombinedOutput()
+		if err != nil {
+			return errors.Wrapf(err, "Failed to copy remote file %s", filename)
+		}
+		if len(stdoutStderr) > 0 {
+			// TODO : siwth to debug
+			log.Printf("Copy of %s: %s", filename, string(stdoutStderr))
+		}
+	}
+
+	zippedContent, err := ziputil.ZipPath(copyDir)
+	zipFile := filepath.Join(e.overlayPath, archiveName)
+	err = ioutil.WriteFile(zipFile, zippedContent, 0700)
+
+	return err
 }
 
 func (e *datasetTransferExecution) resolveExecution() error {
