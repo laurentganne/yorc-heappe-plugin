@@ -69,18 +69,6 @@ topology_template:
   workflows:
     install:
       steps:
-        HEAppEJob_initial:
-          target: HEAppEJob
-          activities:
-            - set_state: initial
-          on_success:
-            - HEAppEJob_creating
-        HEAppEJob_creating:
-          target: HEAppEJob
-          activities:
-            - set_state: creating
-          on_success:
-            - HEAppEJob_create
         HEAppEJob_create:
           target: HEAppEJob
           operation_host: ORCHESTRATOR
@@ -92,18 +80,6 @@ topology_template:
           target: HEAppEJob
           activities:
             - set_state: created
-          on_success:
-            - SendDataset_initial
-        SendDataset_initial:
-          target: SendDataset
-          activities:
-            - set_state: initial
-          on_success:
-            - SendDataset_creating
-        SendDataset_creating:
-          target: SendDataset
-          activities:
-            - set_state: creating
           on_success:
             - SendDataset_create
         SendDataset_create:
@@ -169,42 +145,43 @@ topology_template:
             - Job_stop
     run:
       steps:
-        Job_run:
-          target: HEAppEJob
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
-          on_success:
-            - Job_executed
-        Job_submitted:
-          target: HEAppEJob
-          activities:
-            - set_state: submitted
-          on_success:
-            - Job_executing
-        Job_submitting:
-          target: HEAppEJob
-          activities:
-            - set_state: submitting
-          on_success:
-            - Job_submit
-        Job_executed:
-          target: HEAppEJob
-          activities:
-            - set_state: executed
-        Job_submit:
+        HEAppEJob_submit:
           target: HEAppEJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
           on_success:
             - Job_submitted
-        Job_executing:
+        Job_submitted:
           target: HEAppEJob
           activities:
-            - set_state: executing
+            - set_state: submitted
           on_success:
-            - Job_run
+            - HEAppEJob_run
+        HEAppEJob_run:
+          target: HEAppEJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Job_executed
+        Job_executed:
+          target: HEAppEJob
+          activities:
+            - set_state: executed
+          on_success:
+            - GetResults_create
+        GetResults_create:
+          target: GetResults
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - GetResults_started
+        GetResults_started:
+          target: GetResults
+          activities:
+            - set_state: started
     cancel:
       steps:
         Job_cancelled:
