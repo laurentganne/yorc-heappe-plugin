@@ -35,8 +35,8 @@ const (
 	locationDefaultMonitoringTimeInterval = 5 * time.Second
 	jobIDConsulAttribute                  = "job_id"
 	heappeJobType                         = "org.heappe.nodes.Job"
-	heappeSendDatasetType                 = "org.heappe.nodes.SendDataset"
-	heappeReceiveDatasetType              = "org.heappe.nodes.GetResultFiles"
+	heappeSendDatasetType                 = "org.heappe.nodes.Dataset"
+	heappeReceiveDatasetType              = "org.heappe.nodes.Results"
 )
 
 type execution interface {
@@ -90,30 +90,23 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 	} else {
 
 		isReceiveDataset := false
-		direction := send
 		isSendDataset, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeSendDatasetType)
 		if err != nil {
 			return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
 		}
 		if !isSendDataset {
-
 			isReceiveDataset, err = deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeReceiveDatasetType)
 			if err != nil {
 				return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
-			}
-
-			if isReceiveDataset {
-				direction = receive
 			}
 		}
 
 		if !isSendDataset && !isReceiveDataset {
 			return exec, errors.Errorf("operation %q supported only for nodes derived from %q, %q or %q",
-				operation, heappeJobType, heappeSendDatasetType)
+				operation, heappeJobType, heappeSendDatasetType, heappeReceiveDatasetType)
 		}
 
 		exec = &datasetTransferExecution{
-			direction:    direction,
 			kv:           kv,
 			cfg:          cfg,
 			deploymentID: deploymentID,

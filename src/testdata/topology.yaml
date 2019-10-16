@@ -45,7 +45,7 @@ topology_template:
               progressFile: "console_Stdprog"
               logFile: "console_Stdlog"
     SendDataset:
-      type: org.heappe.nodes.SendDataset
+      type: org.heappe.nodes.Dataset
       artifacts:
         zip_dataset:
           file: { get_input_artifact: zip_dataset }

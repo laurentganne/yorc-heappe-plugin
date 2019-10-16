@@ -166,7 +166,7 @@ node_types:
     derived_from: org.heappe.nodes.pub.Job
     description: >
       HEAppE Job
-  org.heappe.nodes.pub.SendDataset:
+  org.heappe.nodes.pub.Dataset:
     derived_from: tosca.nodes.Root
     abstract: true
     description: >
@@ -179,7 +179,7 @@ node_types:
       - job:
           capability: org.heappe.capabilities.HeappeJob
           node: org.heappe.nodes.Job
-          relationship: org.heappe.relationships.DependsOnJob
+          relationship: org.heappe.relationships.SendInputsToJob
           occurrences: [1, 1]
     interfaces:
       Standard:
@@ -193,12 +193,19 @@ node_types:
           implementation:
             file: "embedded"
             type: org.heappe.artifacts.Deployment
-  org.heappe.nodes.SendDataset:
-    derived_from: org.heappe.nodes.pub.SendDataset
+      Custom:
+        sendJobInputs:
+          inputs:
+            JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
+          implementation:
+            file: "embedded"
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+  org.heappe.nodes.Dataset:
+    derived_from: org.heappe.nodes.pub.Dataset
     description: >
       Transfer a dataset to a HEAppEJob input files directory
 
-  org.heappe.nodes.pub.GetResultFiles:
+  org.heappe.nodes.pub.Results:
     derived_from: tosca.nodes.Root
     abstract: true
     description: >
@@ -212,7 +219,7 @@ node_types:
       - job:
           capability: org.heappe.capabilities.HeappeJob
           node: org.heappe.nodes.Job
-          relationship: org.heappe.relationships.DependsOnJob
+          relationship: org.heappe.relationships.GetResultsFromJob
           occurrences: [1, 1]
     interfaces:
       Standard:
@@ -226,8 +233,15 @@ node_types:
           implementation:
             file: "embedded"
             type: org.heappe.artifacts.Deployment
-  org.heappe.nodes.GetResultFiles:
-    derived_from: org.heappe.nodes.pub.GetResultFiles
+      Custom:
+        getResults:
+          inputs:
+            JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
+          implementation:
+            file: "embedded"
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+  org.heappe.nodes.Results:
+    derived_from: org.heappe.nodes.pub.Results
     description: >
       Get result files from a HEAppEJob
 
@@ -242,3 +256,7 @@ relationship_types:
     derived_from: tosca.relationships.DependsOn
     description: Relationship between a component and a HEAppE job
     valid_target_types: [ org.heappe.nodes.Job ]
+  org.heappe.relationships.SendInputsToJob:
+    derived_from: tosca.relationships.DependsOn
+  org.heappe.relationships.GetResultsFromJob:
+    derived_from: tosca.relationships.DependsOn

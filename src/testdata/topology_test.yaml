@@ -1,7 +1,7 @@
 tosca_definitions_version: alien_dsl_2_0_0
 
 metadata:
-  template_name: HEAppETransferTest
+  template_name: HEAppETest
   template_version: 0.1.0-SNAPSHOT
   template_author: yorc
 
@@ -19,7 +19,7 @@ topology_template:
     zip_dataset:
         type: tosca.artifacts.File
   node_templates:
-    HEAppEJob:
+    TestJob:
       type: org.heappe.nodes.Job
       properties:
         jobSpecification: 
@@ -44,206 +44,233 @@ topology_template:
               standardErrorFile: "console_Stderr"
               progressFile: "console_Stdprog"
               logFile: "console_Stdlog"
-    SendDataset:
-      type: org.heappe.nodes.SendDataset
+    Dataset:
+      type: org.heappe.nodes.Dataset
       artifacts:
         zip_dataset:
           file: { get_input_artifact: zip_dataset }
           type: tosca.artifacts.File
       requirements:
-        - dependsOnbHeappejob:
+        - dependsOnHeappejob:
             type_requirement: job
-            node: HEAppEJob
+            node: TestJob
             capability: org.heappe.capabilities.HeappeJob
-            relationship: org.heappe.relationships.DependsOnJob
-    GetResults:
-      type: org.heappe.nodes.GetResultFiles
+            relationship: org.heappe.relationships.SendInputsToJob
+    Results:
+      type: org.heappe.nodes.Results
       properties:
         zip_result: testresult.zip
       requirements:
-        - dependsOnbHeappejob:
+        - dependsOnHeappejob:
             type_requirement: job
-            node: HEAppEJob
+            node: TestJob
             capability: org.heappe.capabilities.HeappeJob
-            relationship: org.heappe.relationships.DependsOnJob
+            relationship: org.heappe.relationships.GetResultsFromJob
   workflows:
     install:
       steps:
-        HEAppEJob_create:
-          target: HEAppEJob
+        TestJob_create:
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
           on_success:
-            - HEAppEJob_created
-        HEAppEJob_created:
-          target: HEAppEJob
+            - TestJob_started
+        TestJob_started:
+          target: TestJob
           activities:
-            - set_state: created
+            - set_state: started
           on_success:
-            - SendDataset_create
-        SendDataset_create:
-          target: SendDataset
+            - Dataset_create
+        Dataset_create:
+          target: Dataset
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
           on_success:
-            - SendDataset_started
-        SendDataset_started:
-          target: SendDataset
+            - Dataset_started
+        Dataset_started:
+          target: Dataset
+          activities:
+            - set_state: started
+          on_success:
+            - Results_create
+        Results_create:
+          target: Results
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - Results_started
+        Results_started:
+          target: Results
           activities:
             - set_state: started
     uninstall:
       steps:
-        SendDataset_delete:
-          target: SendDataset
+        Results_delete:
+          target: Results
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.delete
           on_success:
-            - SendDataset_deleted
-        SendDataset_deleted:
-          target: SendDataset
+            - Results_deleted
+        Results_deleted:
+          target: Results
+          activities:
+            - set_state: deleted
+          on_success:
+            - Dataset_delete
+        Dataset_delete:
+          target: Dataset
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Standard.delete
+          on_success:
+            - Dataset_deleted
+        Dataset_deleted:
+          target: Dataset
           activities:
             - set_state: started
           on_success:
-            - HEAppEJob_delete
-        HEAppEJob_delete:
-          target: HEAppEJob
+            - TestJob_delete
+        TestJob_delete:
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.delete
           on_success:
-            - HEAppEJob_deleted
-        HEAppEJob_deleted:
-          target: HEAppEJob
+            - TestJob_deleted
+        TestJob_deleted:
+          target: TestJob
           activities:
             - set_state: deleted
     start:
       steps:
         Job_start:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - delegate: start
           on_success:
-            - SendDataset_start
-        SendDataset_start:
-          target: SendDataset
+            - Dataset_start
+        Dataset_start:
+          target: Dataset
           activities:
             - delegate: start
     stop:
       steps:
         Job_stop:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - delegate: stop
-        SendDataset_stop:
-          target: SendDataset
+        Dataset_stop:
+          target: Dataset
           activities:
             - delegate: stop
           on_success:
             - Job_stop
     run:
       steps:
-        HEAppEJob_submit:
-          target: HEAppEJob
+        Dataset_send_inputs:
+          target: Dataset
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: Custom.sendJobInputs
+          on_success:
+            - TestJob_submit
+        TestJob_submit:
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
           on_success:
             - Job_submitted
         Job_submitted:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - set_state: submitted
           on_success:
-            - HEAppEJob_run
-        HEAppEJob_run:
-          target: HEAppEJob
+            - TestJob_run
+        TestJob_run:
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
           on_success:
             - Job_executed
         Job_executed:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - set_state: executed
           on_success:
-            - GetResults_create
-        GetResults_create:
-          target: GetResults
+            - Results_get
+        Results_get:
+          target: Results
           operation_host: ORCHESTRATOR
           activities:
-            - call_operation: Standard.create
-          on_success:
-            - GetResults_started
-        GetResults_started:
-          target: GetResults
-          activities:
-            - set_state: started
+            - call_operation: Custom.getResults
     cancel:
       steps:
         Job_cancelled:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - set_state: cancelled
         Job_cancel:
-          target: HEAppEJob
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.cancel
           on_success:
             - Job_cancelled
         Job_cancelling:
-          target: HEAppEJob
+          target: TestJob
           activities:
             - set_state: cancelling
           on_success:
             - Job_cancel
     transfer_delegate_test:
       steps:
-        SendDataset_test:
-          target: SendDataset
+        Dataset_test:
+          target: Dataset
           activities:
             - delegate: install
     transfer_operation_test:
       steps:
-        SendDatasetOp_test:
-          target: SendDataset
+        DatasetOp_test:
+          target: Dataset
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
     result_operation_test:
       steps:
-        GetResultsOp_test:
-          target: GetResults
+        ResultsOp_test:
+          target: Results
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
     customTest:
       steps:
-        HEAppEJob_create:
-          target: HEAppEJob
+        TestJob_create:
+          target: TestJob
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
           on_success:
-            - HEAppEJob_started
-        HEAppEJob_started:
-          target: HEAppEJob
+            - TestJob_started
+        TestJob_started:
+          target: TestJob
           activities:
             - set_state: started
           on_success:
-            - SendDataset_create
-        SendDataset_create:
-          target: SendDataset
+            - Dataset_create
+        Dataset_create:
+          target: Dataset
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Standard.create
           on_success:
-            - SendDataset_started
-        SendDataset_started:
-          target: SendDataset
+            - Dataset_started
+        Dataset_started:
+          target: Dataset
           activities:
             - set_state: started

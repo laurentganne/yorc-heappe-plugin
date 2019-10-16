@@ -38,6 +38,8 @@ import (
 )
 
 const (
+	sendInputsOperation    = "custom.sendjobinputs"
+	getResultsOperation    = "custom.getresults"
 	zipDatasetArtifactName = "zip_dataset"
 	jobIDEnvVar            = "JOB_ID"
 	zipResultProperty      = "zip_result"
@@ -45,13 +47,7 @@ const (
 
 type direction int
 
-const (
-	send direction = iota
-	receive
-)
-
 type datasetTransferExecution struct {
-	direction      direction
 	kv             *api.KV
 	cfg            config.Configuration
 	deploymentID   string
@@ -75,20 +71,25 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 	var err error
 	switch e.operation.Name {
 	case installOperation, "standard.create":
+		// Nothing to do
+	case uninstallOperation, "standard.delete":
+		// Nothing to do
+	case sendInputsOperation:
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
-			"Starting dataset transfer %q", e.nodeName)
-		if e.direction == send {
-			err = e.transferDataset(ctx)
-		} else {
-			err = e.getResultFiles(ctx)
-		}
+			"Sending input to job %q", e.nodeName)
+		err = e.transferDataset(ctx)
 		if err != nil {
 			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
 				"Dataset transfer %q failed, error %s", e.nodeName, err.Error())
-
 		}
-	case uninstallOperation, "standard.delete":
-		// Nothing to do
+	case getResultsOperation:
+		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+			"Getting results from job %q", e.nodeName)
+		err = e.getResultFiles(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.deploymentID).Registerf(
+				"Getting results from job %q failed, error %s", e.nodeName, err.Error())
+		}
 	default:
 		err = errors.Errorf("Unsupported operation %q on dataset transfer", e.operation.Name)
 	}
