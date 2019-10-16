@@ -173,9 +173,9 @@ node_types:
     derived_from: tosca.nodes.Root
     abstract: true
     description: >
-      Transfer a dataset to a HEAppEJob input files directory (abstract)
+      Transfer a zipped dataset to a HEAppEJob input files directory (abstract)
     artifacts:
-      - dataset:
+      - zip_dataset:
           type: tosca.artifacts.File
           file: heappe-types-a4c.yaml
     requirements:

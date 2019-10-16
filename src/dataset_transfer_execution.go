@@ -38,8 +38,9 @@ import (
 )
 
 const (
-	jobIDEnvVar       = "JOB_ID"
-	zipResultProperty = "zip_result"
+	zipDatasetArtifactName = "zip_dataset"
+	jobIDEnvVar            = "JOB_ID"
+	zipResultProperty      = "zip_result"
 )
 
 type direction int
@@ -97,13 +98,6 @@ func (e *datasetTransferExecution) execute(ctx context.Context) error {
 
 func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
 
-	// Get files to transfer
-	fileNames, err := e.getDatasetFileNames()
-	if err != nil {
-		return err
-	}
-
-	// Get details on destination where to transfer files
 	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
 		return err
@@ -120,6 +114,13 @@ func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
 		return err
 	}
 
+	// Get files to transfer
+	fileNames, err := e.getDatasetFileNames(jobID)
+	if err != nil {
+		return err
+	}
+
+	// Get details on destination where to transfer files
 	transferMethod, err := heappeClient.GetFileTransferMethod(jobID)
 	if err != nil {
 		return err
@@ -146,40 +147,48 @@ func (e *datasetTransferExecution) transferDataset(ctx context.Context) error {
 	defer client.Close()
 
 	// Transfer each file in the dataset
-	for _, filename := range fileNames {
+	for _, fileName := range fileNames {
 
-		absolutePath := filepath.Join(e.overlayPath, filename)
-		f, err := os.Open(absolutePath)
+		f, err := os.Open(fileName)
 		if err != nil {
-			return errors.Wrapf(err, "Failed to open dataset file %s", absolutePath)
+			return errors.Wrapf(err, "Failed to open dataset file %s", fileName)
 		}
 		defer f.Close()
 
-		// Finaly, copy the file over
-		// Usage: CopyFile(fileReader, remotePath, permission)
-
-		err = client.CopyFile(f, filepath.Join(transferMethod.SharedBasepath, filename), "0744")
+		baseName := filepath.Base(fileName)
+		err = client.CopyFile(f, filepath.Join(transferMethod.SharedBasepath, baseName), "0744")
 		if err != nil {
-			return errors.Wrapf(err, "Failed to copy dataset file %s to remote server", filename)
+			return errors.Wrapf(err, "Failed to copy dataset file %s to remote server", baseName)
 		}
 	}
 
 	return err
 }
 
-func (e *datasetTransferExecution) getDatasetFileNames() ([]string, error) {
+func (e *datasetTransferExecution) getDatasetFileNames(jobID int64) ([]string, error) {
 
 	var fileNames []string
 
-	datasetFileName := e.artifacts["dataset"]
+	datasetFileName := e.artifacts[zipDatasetArtifactName]
 	if datasetFileName == "" {
 		return fileNames, errors.Errorf("No dataset provided")
 	}
 
-	// TODO: manage the case where this dataset needs to be unzipped
-	fileNames = []string{datasetFileName}
+	datasetAbsPath := filepath.Join(e.overlayPath, datasetFileName)
 
-	return fileNames, nil
+	destDir := filepath.Join(e.overlayPath, fmt.Sprintf("heappe_dataset_%d", jobID))
+	os.RemoveAll(destDir)
+	err := os.MkdirAll(destDir, 0700)
+	if err != nil {
+		return fileNames, err
+	}
+
+	fileNames, err = ziputil.Unzip(datasetAbsPath, destDir)
+	if err != nil {
+		err = errors.Wrapf(err, "Failed to unzip dataset")
+	}
+
+	return fileNames, err
 }
 
 func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
@@ -240,14 +249,16 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 	// see pull request https://github.com/bramvdbogaerde/go-scp/pull/12
 	// In the meantime using scp command
 	// Creating the private key file
-	pkeyFile := filepath.Join(e.overlayPath, fmt.Sprint("heappepkey_%d", jobID))
+	pkeyFile := filepath.Join(e.overlayPath, fmt.Sprintf("heappepkey_%d", jobID))
 	err = ioutil.WriteFile(pkeyFile, []byte(transferMethod.Credentials.PrivateKey), 0400)
 	if err != nil {
 		return err
 	}
+	defer os.Remove(pkeyFile)
 
-	copyDir := filepath.Join(e.overlayPath, fmt.Sprint("heapperesults_%d", jobID))
-	err = os.Mkdir(copyDir, 0700)
+	copyDir := filepath.Join(e.overlayPath, fmt.Sprintf("heappe_results_%d", jobID))
+	os.RemoveAll(copyDir)
+	err = os.MkdirAll(copyDir, 0700)
 	if err != nil {
 		return err
 	}
@@ -267,6 +278,7 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 			localPath)
 		stdoutStderr, err := copyCmd.CombinedOutput()
 		if err != nil {
+			log.Printf("Failed to copy remote file: %s - %s", err.Error(), string(stdoutStderr))
 			return errors.Wrapf(err, "Failed to copy remote file %s", filename)
 		}
 		if len(stdoutStderr) > 0 {

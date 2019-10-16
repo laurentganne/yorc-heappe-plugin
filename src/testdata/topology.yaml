@@ -16,7 +16,7 @@ imports:
 
 topology_template:
   input_artifacts:
-    dataset:
+    zip_dataset:
         type: tosca.artifacts.File
   node_templates:
     HEAppEJob:
@@ -47,8 +47,8 @@ topology_template:
     SendDataset:
       type: org.heappe.nodes.SendDataset
       artifacts:
-        dataset:
-          file: { get_input_artifact: dataset }
+        zip_dataset:
+          file: { get_input_artifact: zip_dataset }
           type: tosca.artifacts.File
       requirements:
         - dependsOnbHeappejob:

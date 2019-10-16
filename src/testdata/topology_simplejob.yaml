@@ -15,9 +15,6 @@ imports:
   - heappe-types:0.1.0
 
 topology_template:
-  input_artifacts:
-    dataset:
-        type: tosca.artifacts.File
   node_templates:
     HEAppEJob:
       type: org.heappe.nodes.Job
