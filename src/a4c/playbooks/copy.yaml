@@ -1,0 +1,4 @@
+- name: Copy HEAppE job results to "{{ DEST_DIR }}"
+  unarchive:
+    src: "{{ ZIP_SRC }}"
+    dest: "{{ DEST_DIR }}"

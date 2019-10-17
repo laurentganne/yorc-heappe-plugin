@@ -214,15 +214,18 @@ node_types:
     abstract: true
     description: >
       Get result files from a HEAppEJob (abstract) 
-    properties:
+    attributes:
       zip_result:
         type: string
         description: >
           Name of Zip file containing results files retrieved from the job
+    capabilities:
+      job_results:
+        type: org.heappe.capabilities.HeappeJobResults
     requirements:
       - job:
           capability: org.heappe.capabilities.HeappeJob
-          node: org.heappe.nodes.Job
+          node: org.heappe.nodes.pub.Job
           relationship: org.heappe.relationships.GetResultsFromJob
           occurrences: [1, 1]
     interfaces:
@@ -249,12 +252,51 @@ node_types:
     description: >
       Get result files from a HEAppEJob
 
+  org.heappe.nodes.pub.Copy:
+    derived_from: tosca.nodes.SoftwareComponent
+    abstract: true
+    description: >
+      Copy HEAppE Job results on host (abstract) 
+    properties:
+      destination_dir:
+        type: string
+        description: >
+          Destination directory where to copy files
+    requirements:
+      - results:
+          capability: org.heappe.capabilities.HeappeJobResults
+          node: org.heappe.nodes.pub.Results
+          relationship: org.heappe.relationships.CopyResults
+          occurrences: [1, 1]
+    interfaces:
+      Standard:
+        create:
+          implementation:
+            implementation: playbooks/noop.yaml
+        delete:
+          implementation: playbooks/noop.yaml
+      Custom:
+        copyResults:
+          inputs:
+            ZIP_SRC: { get_attribute: [REQ_TARGET, results, zip_result] }
+            DEST_DIR: { get_property: [SELF, destination_dir] }
+          implementation: playbooks/copy.yaml
+  org.heappe.nodes.Copy:
+    derived_from: org.heappe.nodes.pub.Copy
+    description: >
+      Copy HEAppE Job results on host
+
 capability_types:
   org.heappe.capabilities.HeappeJob:
     derived_from: tosca.capabilities.Root
     description: >
       A capability fulfilling requirements of a node requiring to be
       associated with a HEAppE Job.
+  org.heappe.capabilities.HeappeJobResults:
+    derived_from: tosca.capabilities.Root
+    description: >
+      A capability fulfilling requirements of a node requiring to be
+      associated with HEAppE Job Results.
 relationship_types:
   org.heappe.relationships.DependsOnJob:
     derived_from: tosca.relationships.DependsOn
@@ -263,4 +305,6 @@ relationship_types:
   org.heappe.relationships.SendInputsToJob:
     derived_from: tosca.relationships.DependsOn
   org.heappe.relationships.GetResultsFromJob:
+    derived_from: tosca.relationships.DependsOn
+  org.heappe.relationships.CopyRresults:
     derived_from: tosca.relationships.DependsOn
