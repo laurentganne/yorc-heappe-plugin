@@ -60,8 +60,6 @@ topology_template:
             relationship: org.heappe.relationships.SendInputsToJob
     Results:
       type: org.heappe.nodes.Results
-      properties:
-        zip_result: testresult.zip
       requirements:
         - dependsOnHeappejob:
             type_requirement: job
@@ -103,10 +101,10 @@ topology_template:
             capability: tosca.capabilities.Container
             relationship: tosca.relationships.HostedOn
         - dependsOnJobResults:
-            type_requirement: results
+            type_requirement: job_results
             node: Results
             capability: org.heappe.capabilities.HeappeJobResults
-            relationship: org.heappe.relationships.CopyRresults
+            relationship: org.heappe.relationships.CopyResults
     Docker:
       type: org.ystia.docker.ansible.nodes.Docker
       properties:
@@ -161,6 +159,7 @@ topology_template:
             - set_state: started
           on_success:
             - Dataset_create
+            - Results_create
         Dataset_create:
           target: Dataset
           operation_host: ORCHESTRATOR
@@ -172,8 +171,6 @@ topology_template:
           target: Dataset
           activities:
             - set_state: started
-          on_success:
-            - Results_create
         Results_create:
           target: Results
           operation_host: ORCHESTRATOR
@@ -185,6 +182,10 @@ topology_template:
           target: Results
           activities:
             - set_state: started
+        Network_install:
+          target: PublicNet
+          activities:
+            - delegate: install
     uninstall:
       steps:
         GenericContainer_stop:
@@ -331,12 +332,6 @@ topology_template:
           activities:
             - call_operation: Custom.getResults
           on_success:
-            - Network_install
-        Network_install:
-          target: PublicNet
-          activities:
-            - delegate: install
-          on_success:
             - Compute_install
         Compute_install:
           target: VirtualMachine
@@ -352,7 +347,7 @@ topology_template:
           on_success:
             - CopyResults_executed
         CopyResults_executed:
-          target: Docker
+          target: CopyResults
           activities:
             - set_state: executed
           on_success:

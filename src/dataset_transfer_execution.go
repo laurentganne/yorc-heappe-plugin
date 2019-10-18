@@ -42,7 +42,7 @@ const (
 	getResultsOperation    = "custom.getresults"
 	zipDatasetArtifactName = "zip_dataset"
 	jobIDEnvVar            = "JOB_ID"
-	zipResultProperty      = "zip_result"
+	zipResultAttribute     = "zip_result"
 )
 
 type direction int
@@ -194,18 +194,6 @@ func (e *datasetTransferExecution) getDatasetFileNames(jobID int64) ([]string, e
 
 func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 
-	// Get the name of archive to create
-	archiveName, err := deployments.GetStringNodePropertyValue(e.kv, e.deploymentID,
-		e.nodeName, zipResultProperty)
-	if err != nil {
-		return err
-	}
-
-	if archiveName == "" {
-		// nothing to do
-		return err
-	}
-
 	// Get details on remote host where to get result files
 	heappeClient, err := getHEAppEClient(e.cfg, e.deploymentID, e.nodeName)
 	if err != nil {
@@ -258,6 +246,7 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 	defer os.Remove(pkeyFile)
 
 	copyDir := filepath.Join(e.overlayPath, fmt.Sprintf("heappe_results_%d", jobID))
+	archivePath := copyDir + ".zip"
 	os.RemoveAll(copyDir)
 	err = os.MkdirAll(copyDir, 0700)
 	if err != nil {
@@ -289,8 +278,15 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 	}
 
 	zippedContent, err := ziputil.ZipPath(copyDir)
-	zipFile := filepath.Join(e.overlayPath, archiveName)
-	err = ioutil.WriteFile(zipFile, zippedContent, 0700)
+	err = ioutil.WriteFile(archivePath, zippedContent, 0700)
+
+	// Set the corresponding attribute
+	err = deployments.SetAttributeForAllInstances(e.kv, e.deploymentID, e.nodeName,
+		zipResultAttribute, archivePath)
+	if err != nil {
+		err = errors.Wrapf(err, "Failed to store attribute %s for deployment %s node %s",
+			zipResultAttribute, e.deploymentID, e.nodeName)
+	}
 
 	return err
 }

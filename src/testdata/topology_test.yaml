@@ -13,6 +13,8 @@ imports:
   - docker-types:2.2.0-SM9
   - alien-base-types:2.2.0-SM9
   - heappe-types:0.1.0
+  - org.ystia.docker.containers.docker.generic:2.2.0-SNAPSHOT
+  - org.ystia.docker.ansible:2.2.0-SNAPSHOT
 
 topology_template:
   input_artifacts:
@@ -58,14 +60,89 @@ topology_template:
             relationship: org.heappe.relationships.SendInputsToJob
     Results:
       type: org.heappe.nodes.Results
-      properties:
-        zip_result: testresult.zip
       requirements:
         - dependsOnHeappejob:
             type_requirement: job
             node: TestJob
             capability: org.heappe.capabilities.HeappeJob
             relationship: org.heappe.relationships.GetResultsFromJob
+    PublicNet:
+      type: tosca.nodes.Network
+      properties:
+        ip_version: 4
+    VirtualMachine:
+      type: tosca.nodes.Compute
+      requirements:
+        - networkPublicNetConnection:
+            type_requirement: network
+            node: PublicNet
+            capability: tosca.capabilities.Connectivity
+            relationship: tosca.relationships.Network
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
+        endpoint:
+          properties:
+            secure: true
+            protocol: tcp
+            network_name: PRIVATE
+            initiator: source
+    CopyResults:
+      type: org.heappe.nodes.CopyResults
+      properties:
+        destination_dir: /home/centos/
+      requirements:
+        - hostedOnVirtualMachineHost:
+            type_requirement: host
+            node: VirtualMachine
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+        - dependsOnJobResults:
+            type_requirement: job_results
+            node: Results
+            capability: org.heappe.capabilities.HeappeJobResults
+            relationship: org.heappe.relationships.CopyResults
+    Docker:
+      type: org.ystia.docker.ansible.nodes.Docker
+      properties:
+        docker_version: ""
+      requirements:
+        - hostedOnVirtualMachineHost:
+            type_requirement: host
+            node: VirtualMachine
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+    Apache:
+      type: org.ystia.docker.containers.docker.generic.nodes.GenericContainer
+      properties:
+        auto_remove: false
+        cleanup: false
+        detach: true
+        image: "httpd:latest"
+        keep_volumes: true
+        published_ports: 
+          - "8080:80"
+        restart_policy: no
+        cpu_share: 1.0
+        mem_share: "128 MB"
+        docker_bash_cmd: 
+          - "/bin/bash"
+          - "-c"
+      requirements:
+        - hostedOnContainerRuntimeDockerHost:
+            type_requirement: host
+            node: Docker
+            capability: org.alien4cloud.extended.container.capabilities.ApplicationHost
+            relationship: org.alien4cloud.extended.container.relationships.HostedOnContainerRuntime
+      capabilities:
+        scalable:
+          properties:
+            min_instances: 1
+            max_instances: 1
+            default_instances: 1
   workflows:
     install:
       steps:
@@ -82,6 +159,7 @@ topology_template:
             - set_state: started
           on_success:
             - Dataset_create
+            - Results_create
         Dataset_create:
           target: Dataset
           operation_host: ORCHESTRATOR
@@ -93,8 +171,6 @@ topology_template:
           target: Dataset
           activities:
             - set_state: started
-          on_success:
-            - Results_create
         Results_create:
           target: Results
           operation_host: ORCHESTRATOR
@@ -106,8 +182,54 @@ topology_template:
           target: Results
           activities:
             - set_state: started
+        Network_install:
+          target: PublicNet
+          activities:
+            - delegate: install
     uninstall:
       steps:
+        GenericContainer_stop:
+          target: Apache
+          activities:
+            - call_operation: Standard.stop
+          on_success:
+            - GenericContainer_delete
+        GenericContainer_delete:
+          target: Apache
+          activities:
+            - call_operation: Standard.delete
+          on_success:
+            - GenericContainer_deleted
+        GenericContainer_deleted:
+          target: Apache
+          activities:
+            - set_state: deleted
+          on_success:
+            - Docker_stop
+        Docker_stop:
+          target: Docker
+          activities:
+            - call_operation: Standard.stop
+          on_success:
+            - Docker_deleted
+        Docker_deleted:
+          target: Docker
+          activities:
+            - set_state: deleted
+          on_success:
+            - Compute_uninstall
+        Compute_uninstall:
+          target: VirtualMachine
+          activities:
+            - delegate: uninstall
+          on_success:
+            - Network_uninstall
+        Network_uninstall:
+          target: PublicNet
+          activities:
+            - delegate: uninstall
+          on_success:
+            - Results_delete
         Results_delete:
           target: Results
           operation_host: ORCHESTRATOR
@@ -209,6 +331,67 @@ topology_template:
           operation_host: ORCHESTRATOR
           activities:
             - call_operation: Custom.getResults
+          on_success:
+            - Compute_install
+        Compute_install:
+          target: VirtualMachine
+          activities:
+            - delegate: install
+          on_success:
+            - CopyResults_copy
+            - Docker_create
+        CopyResults_copy:
+          target: CopyResults
+          activities:
+            - call_operation: Custom.copyResults
+          on_success:
+            - CopyResults_executed
+        CopyResults_executed:
+          target: CopyResults
+          activities:
+            - set_state: executed
+          on_success:
+            - GenericContainer_create
+        Docker_create:
+          target: Docker
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - Docker_configure
+        Docker_configure:
+          target: Docker
+          activities:
+            - call_operation: Standard.configure
+          on_success:
+            - Docker_start
+        Docker_start:
+          target: Docker
+          activities:
+            - call_operation: Standard.start
+          on_success:
+            - Docker_started
+        Docker_started:
+          target: Docker
+          activities:
+            - set_state: started
+          on_success:
+            - GenericContainer_create
+        GenericContainer_create:
+          target: Apache
+          activities:
+            - call_operation: Standard.create
+          on_success:
+            - GenericContainer_start
+        GenericContainer_start:
+          target: Apache
+          activities:
+            - call_operation: Standard.start
+          on_success:
+            - GenericContainer_started
+        GenericContainer_started:
+          target: Apache
+          activities:
+            - set_state: started
     cancel:
       steps:
         Job_cancelled:
@@ -228,49 +411,3 @@ topology_template:
             - set_state: cancelling
           on_success:
             - Job_cancel
-    transfer_delegate_test:
-      steps:
-        Dataset_test:
-          target: Dataset
-          activities:
-            - delegate: install
-    transfer_operation_test:
-      steps:
-        DatasetOp_test:
-          target: Dataset
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.create
-    result_operation_test:
-      steps:
-        ResultsOp_test:
-          target: Results
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.create
-    customTest:
-      steps:
-        TestJob_create:
-          target: TestJob
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.create
-          on_success:
-            - TestJob_started
-        TestJob_started:
-          target: TestJob
-          activities:
-            - set_state: started
-          on_success:
-            - Dataset_create
-        Dataset_create:
-          target: Dataset
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: Standard.create
-          on_success:
-            - Dataset_started
-        Dataset_started:
-          target: Dataset
-          activities:
-            - set_state: started

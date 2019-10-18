@@ -210,15 +210,18 @@ node_types:
     abstract: true
     description: >
       Get result files from a HEAppEJob (abstract) 
-    properties:
+    attributes:
       zip_result:
         type: string
         description: >
           Name of Zip file containing results files retrieved from the job
+    capabilities:
+      job_results:
+        type: org.heappe.capabilities.HeappeJobResults
     requirements:
       - job:
           capability: org.heappe.capabilities.HeappeJob
-          node: org.heappe.nodes.Job
+          node: org.heappe.nodes.pub.Job
           relationship: org.heappe.relationships.GetResultsFromJob
           occurrences: [1, 1]
     interfaces:
@@ -251,6 +254,11 @@ capability_types:
     description: >
       A capability fulfilling requirements of a node requiring to be
       associated with a HEAppE Job.
+  org.heappe.capabilities.HeappeJobResults:
+    derived_from: tosca.capabilities.Root
+    description: >
+      A capability fulfilling requirements of a node requiring to be
+      associated with HEAppE Job Results.
 relationship_types:
   org.heappe.relationships.DependsOnJob:
     derived_from: tosca.relationships.DependsOn

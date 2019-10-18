@@ -249,7 +249,7 @@ node_types:
     derived_from: org.heappe.nodes.pub.Results
     description: >
       Get result files from a HEAppEJob
-  org.heappe.nodes.pub.Copy:
+  org.heappe.nodes.pub.CopyResults:
     derived_from: tosca.nodes.SoftwareComponent
     abstract: true
     description: >
@@ -278,8 +278,8 @@ node_types:
             ZIP_SRC: { get_attribute: [REQ_TARGET, results, zip_result] }
             DEST_DIR: { get_property: [SELF, destination_dir] }
           implementation: playbooks/copy.yaml
-  org.heappe.nodes.Copy:
-    derived_from: org.heappe.nodes.pub.Copy
+  org.heappe.nodes.CopyResults:
+    derived_from: org.heappe.nodes.pub.CopyResults
     description: >
       Copy HEAppE Job results on host
 
