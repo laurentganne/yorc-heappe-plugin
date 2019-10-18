@@ -202,13 +202,11 @@ node_types:
             JOB_ID: { get_attribute: [REQ_TARGET, job, job_id] }
           implementation:
             file: heappe-types-a4c.yaml
-            type: tosca.artifacts.Deployment.Image.Container.Docker
-        
+            type: tosca.artifacts.Deployment.Image.Container.Docker        
   org.heappe.nodes.Dataset:
     derived_from: org.heappe.nodes.pub.Dataset
     description: >
       Transfer a dataset to a HEAppEJob input files directory
-
   org.heappe.nodes.pub.Results:
     derived_from: tosca.nodes.Root
     abstract: true
@@ -251,7 +249,6 @@ node_types:
     derived_from: org.heappe.nodes.pub.Results
     description: >
       Get result files from a HEAppEJob
-
   org.heappe.nodes.pub.Copy:
     derived_from: tosca.nodes.SoftwareComponent
     abstract: true
@@ -262,8 +259,9 @@ node_types:
         type: string
         description: >
           Destination directory where to copy files
+        required: true
     requirements:
-      - results:
+      - job_results:
           capability: org.heappe.capabilities.HeappeJobResults
           node: org.heappe.nodes.pub.Results
           relationship: org.heappe.relationships.CopyResults
@@ -271,8 +269,7 @@ node_types:
     interfaces:
       Standard:
         create:
-          implementation:
-            implementation: playbooks/noop.yaml
+          implementation: playbooks/noop.yaml
         delete:
           implementation: playbooks/noop.yaml
       Custom:
@@ -303,8 +300,10 @@ relationship_types:
     description: Relationship between a component and a HEAppE job
     valid_target_types: [ org.heappe.nodes.pub.Job ]
   org.heappe.relationships.SendInputsToJob:
-    derived_from: tosca.relationships.DependsOn
+    derived_from: org.heappe.relationships.DependsOnJob
   org.heappe.relationships.GetResultsFromJob:
+    derived_from: org.heappe.relationships.DependsOnJob
+  org.heappe.relationships.CopyResults:
     derived_from: tosca.relationships.DependsOn
-  org.heappe.relationships.CopyRresults:
-    derived_from: tosca.relationships.DependsOn
+    description: Relationship between a component and a HEAppE job Results
+    valid_target_types: [ org.heappe.nodes.pub.Results ]

@@ -92,6 +92,21 @@ topology_template:
             protocol: tcp
             network_name: PRIVATE
             initiator: source
+    CopyResults:
+      type: org.heappe.nodes.CopyResults
+      properties:
+        destination_dir: /home/centos/
+      requirements:
+        - hostedOnVirtualMachineHost:
+            type_requirement: host
+            node: VirtualMachine
+            capability: tosca.capabilities.Container
+            relationship: tosca.relationships.HostedOn
+        - dependsOnJobResults:
+            type_requirement: results
+            node: Results
+            capability: org.heappe.capabilities.HeappeJobResults
+            relationship: org.heappe.relationships.CopyRresults
     Docker:
       type: org.ystia.docker.ansible.nodes.Docker
       properties:
@@ -328,7 +343,20 @@ topology_template:
           activities:
             - delegate: install
           on_success:
+            - CopyResults_copy
             - Docker_create
+        CopyResults_copy:
+          target: CopyResults
+          activities:
+            - call_operation: Custom.copyResults
+          on_success:
+            - CopyResults_executed
+        CopyResults_executed:
+          target: Docker
+          activities:
+            - set_state: executed
+          on_success:
+            - GenericContainer_create
         Docker_create:
           target: Docker
           activities:
