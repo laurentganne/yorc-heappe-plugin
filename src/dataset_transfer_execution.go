@@ -217,6 +217,11 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 		return err
 	}
 
+	if len(filenames) == 0 {
+		log.Printf("!!!!!!!!! TEST code: no result file, forcing result to file dataset.txt")
+		filenames = []string{"dataset.txt"}
+	}
+
 	// TODO: use debug mode
 	log.Printf("Result files for deployment %s node %d : %+v", e.deploymentID, e.nodeName, filenames)
 
