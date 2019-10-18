@@ -275,7 +275,7 @@ node_types:
       Custom:
         copyResults:
           inputs:
-            ZIP_SRC: { get_attribute: [REQ_TARGET, results, zip_result] }
+            ZIP_SRC: { get_attribute: [REQ_TARGET, job_results, zip_result] }
             DEST_DIR: { get_property: [SELF, destination_dir] }
           implementation: playbooks/copy.yaml
   org.heappe.nodes.CopyResults:
