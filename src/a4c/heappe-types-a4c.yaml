@@ -165,6 +165,8 @@ node_types:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
+    tags:
+      icon: /images/heappejob.png
   org.heappe.nodes.Job:
     derived_from: org.heappe.nodes.pub.Job
     description: >
@@ -203,6 +205,8 @@ node_types:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker        
+    tags:
+      icon: /images/heappedataset.png
   org.heappe.nodes.Dataset:
     derived_from: org.heappe.nodes.pub.Dataset
     description: >
@@ -245,6 +249,8 @@ node_types:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
+    tags:
+      icon: /images/heapperesults.png
   org.heappe.nodes.Results:
     derived_from: org.heappe.nodes.pub.Results
     description: >
@@ -278,6 +284,8 @@ node_types:
             ZIP_SRC: { get_attribute: [REQ_TARGET, job_results, zip_result] }
             DEST_DIR: { get_property: [SELF, destination_dir] }
           implementation: playbooks/copy.yaml
+    tags:
+      icon: /images/heappecopy.png
   org.heappe.nodes.CopyResults:
     derived_from: org.heappe.nodes.pub.CopyResults
     description: >
