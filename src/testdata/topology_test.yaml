@@ -338,20 +338,7 @@ topology_template:
           activities:
             - delegate: install
           on_success:
-            - CopyResults_copy
             - Docker_create
-        CopyResults_copy:
-          target: CopyResults
-          activities:
-            - call_operation: Custom.copyResults
-          on_success:
-            - CopyResults_executed
-        CopyResults_executed:
-          target: CopyResults
-          activities:
-            - set_state: executed
-          on_success:
-            - GenericContainer_create
         Docker_create:
           target: Docker
           activities:
@@ -376,10 +363,23 @@ topology_template:
             - set_state: started
           on_success:
             - GenericContainer_create
+            - CopyResults_copy
         GenericContainer_create:
           target: Apache
           activities:
             - call_operation: Standard.create
+          on_success:
+            - GenericContainer_start
+        CopyResults_copy:
+          target: CopyResults
+          activities:
+            - call_operation: Custom.copyResults
+          on_success:
+            - CopyResults_executed
+        CopyResults_executed:
+          target: CopyResults
+          activities:
+            - set_state: executed
           on_success:
             - GenericContainer_start
         GenericContainer_start:
