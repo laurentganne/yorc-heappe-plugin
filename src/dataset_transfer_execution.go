@@ -217,11 +217,6 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 		return err
 	}
 
-	if len(filenames) == 0 {
-		log.Printf("!!!!!!!!! TEST code: no result file, forcing result to file dataset.txt")
-		filenames = []string{"dataset.txt"}
-	}
-
 	// TODO: use debug mode
 	log.Printf("Result files for deployment %s node %d : %+v", e.deploymentID, e.nodeName, filenames)
 
@@ -266,6 +261,7 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 		remotePath := filepath.Join(transferMethod.SharedBasepath, filename)
 		localPath := filepath.Join(copyDir, filename)
 		copyCmd := exec.Command("/bin/scp", "-i", pkeyFile,
+			"-o", "StrictHostKeyChecking=no",
 			fmt.Sprintf("%s@%s:%s",
 				transferMethod.Credentials.Username,
 				transferMethod.ServerHostname,
