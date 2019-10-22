@@ -218,7 +218,7 @@ func (e *datasetTransferExecution) getResultFiles(ctx context.Context) error {
 	}
 
 	// TODO: use debug mode
-	log.Printf("Result files for deployment %s node %d : %+v", e.deploymentID, e.nodeName, filenames)
+	log.Printf("Result files for deployment %s node %s : %+v", e.deploymentID, e.nodeName, filenames)
 
 	if len(filenames) == 0 {
 		// Nothing to do
