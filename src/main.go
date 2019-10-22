@@ -65,5 +65,10 @@ func main() {
 		return new(job.ActionOperator)
 	}
 
+	servConfig.InfraUsageCollectorSupportedInfras = []string{heappeInfrastructureType}
+	servConfig.InfraUsageCollectorFunc = func() prov.InfraUsageCollector {
+		return newInfraUsageCollector()
+	}
+
 	plugin.Serve(servConfig)
 }

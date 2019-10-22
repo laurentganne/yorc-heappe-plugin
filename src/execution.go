@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	infrastructureType                    = "heappe"
+	heappeInfrastructureType              = "heappe"
 	locationJobMonitoringTimeInterval     = "job_monitoring_time_interval"
 	locationDefaultMonitoringTimeInterval = 5 * time.Second
 	heappeJobType                         = "org.heappe.nodes.Job"
@@ -65,7 +65,7 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 			return nil, err
 		}
 		locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
-			nodeName, infrastructureType)
+			nodeName, heappeInfrastructureType)
 		if err != nil {
 			return nil, err
 		}
