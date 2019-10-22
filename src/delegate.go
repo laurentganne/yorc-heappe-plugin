@@ -57,7 +57,7 @@ func (de *delegateExecutor) ExecDelegate(ctx context.Context, cfg config.Configu
 		return err
 	}
 
-	err = exec.execute(ctx)
+	err = exec.Execute(ctx)
 	if err != nil {
 		return err
 	}

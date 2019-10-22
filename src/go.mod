@@ -1,4 +1,4 @@
-module github.com/laurentganne/heappe-plugin/v1
+module github.com/laurentganne/yorc-heappe-plugin/v1
 
 require (
 	github.com/bramvdbogaerde/go-scp v0.0.0-20191005185035-c96fe084709e

@@ -15,6 +15,8 @@
 package main
 
 import (
+	"github.com/laurentganne/yorc-heappe-plugin/v1/job"
+
 	"github.com/ystia/yorc/v4/log"
 	"github.com/ystia/yorc/v4/plugin"
 	"github.com/ystia/yorc/v4/prov"
@@ -60,7 +62,7 @@ func main() {
 	// Set ActionFunc that implements an ActionOperator for HEAppE jobs
 	servConfig.ActionTypes = []string{"heappe-job-monitoring"}
 	servConfig.ActionFunc = func() prov.ActionOperator {
-		return new(actionOperator)
+		return new(job.ActionOperator)
 	}
 
 	plugin.Serve(servConfig)

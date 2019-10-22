@@ -20,6 +20,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/laurentganne/yorc-heappe-plugin/v1/job"
+
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/locations"
@@ -28,25 +30,22 @@ import (
 
 const (
 	infrastructureType                    = "heappe"
-	locationURLPropertyName               = "url"
-	locationUserPropertyName              = "user"
-	locationPasswordPropertyName          = "password"
 	locationJobMonitoringTimeInterval     = "job_monitoring_time_interval"
 	locationDefaultMonitoringTimeInterval = 5 * time.Second
-	jobIDConsulAttribute                  = "job_id"
 	heappeJobType                         = "org.heappe.nodes.Job"
 	heappeSendDatasetType                 = "org.heappe.nodes.Dataset"
 	heappeReceiveDatasetType              = "org.heappe.nodes.Results"
 )
 
-type execution interface {
-	resolveExecution() error
-	executeAsync(ctx context.Context) (*prov.Action, time.Duration, error)
-	execute(ctx context.Context) error
+// Execution is the interface holding functions to execute an operation
+type Execution interface {
+	ResolveExecution() error
+	ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error)
+	Execute(ctx context.Context) error
 }
 
 func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string,
-	operation prov.Operation) (execution, error) {
+	operation prov.Operation) (Execution, error) {
 
 	consulClient, err := cfg.GetConsulClient()
 	if err != nil {
@@ -54,7 +53,7 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 	}
 	kv := consulClient.KV()
 
-	var exec execution
+	var exec Execution
 	isJob, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeJobType)
 	if err != nil {
 		return exec, err
@@ -76,13 +75,13 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 			// Default value
 			monitoringTimeInterval = locationDefaultMonitoringTimeInterval
 		}
-		exec = &jobExecution{
-			kv:                     kv,
-			cfg:                    cfg,
-			deploymentID:           deploymentID,
-			taskID:                 taskID,
-			nodeName:               nodeName,
-			operation:              operation,
+		exec = &job.JobExecution{
+			KV:                     kv,
+			Cfg:                    cfg,
+			DeploymentID:           deploymentID,
+			TaskID:                 taskID,
+			NodeName:               nodeName,
+			Operation:              operation,
 			MonitoringTimeInterval: monitoringTimeInterval,
 		}
 
@@ -106,43 +105,15 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 				operation, heappeJobType, heappeSendDatasetType, heappeReceiveDatasetType)
 		}
 
-		exec = &datasetTransferExecution{
-			kv:           kv,
-			cfg:          cfg,
-			deploymentID: deploymentID,
-			taskID:       taskID,
-			nodeName:     nodeName,
-			operation:    operation,
+		exec = &job.DatasetTransferExecution{
+			KV:           kv,
+			Cfg:          cfg,
+			DeploymentID: deploymentID,
+			TaskID:       taskID,
+			NodeName:     nodeName,
+			Operation:    operation,
 		}
 	}
 
-	return exec, exec.resolveExecution()
-}
-
-func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (HEAppEClient, error) {
-
-	locationMgr, err := locations.GetManager(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
-		nodeName, infrastructureType)
-	if err != nil {
-		return nil, err
-	}
-
-	url := locationProps.GetString(locationURLPropertyName)
-	if url == "" {
-		return nil, errors.Errorf("No URL defined in HEAppE location configuration")
-	}
-	username := locationProps.GetString("user")
-	if username == "" {
-		return nil, errors.Errorf("No user defined in deployment %s node %s",
-			deploymentID, nodeName)
-
-	}
-	password := locationProps.GetString("password")
-
-	return NewBasicAuthClient(url, username, password), err
+	return exec, exec.ResolveExecution()
 }

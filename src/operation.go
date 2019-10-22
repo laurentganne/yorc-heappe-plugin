@@ -23,11 +23,6 @@ import (
 	"github.com/ystia/yorc/v4/prov"
 )
 
-const (
-	installOperation   = "install"
-	uninstallOperation = "uninstall"
-)
-
 type operationExecutor struct{}
 
 func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation, stepName string) (*prov.Action, time.Duration, error) {
@@ -37,7 +32,7 @@ func (e *operationExecutor) ExecAsyncOperation(ctx context.Context, cfg config.C
 		return nil, 0, err
 	}
 
-	return exec.executeAsync(ctx)
+	return exec.ExecuteAsync(ctx)
 }
 
 func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Configuration, taskID, deploymentID, nodeName string, operation prov.Operation) error {
@@ -54,6 +49,6 @@ func (e *operationExecutor) ExecOperation(ctx context.Context, cfg config.Config
 		return err
 	}
 
-	err = exec.execute(ctx)
+	err = exec.Execute(ctx)
 	return err
 }
