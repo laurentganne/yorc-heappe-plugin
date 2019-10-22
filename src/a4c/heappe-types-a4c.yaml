@@ -7,8 +7,6 @@ metadata:
 
 imports:
   - tosca-normative-types:1.0.0-ALIEN20
-  - alien-base-types:2.2.0-SM9
-  - docker-types:2.2.0-SM9
   - yorc-types:1.1.0
 
 data_types:
@@ -123,9 +121,12 @@ data_types:
 artifact_types:
   org.heappe.artifacts.Deployment:
     derived_from: tosca.artifacts.Deployment
+  tosca.artifacts.Deployment.Image.Container.Docker:
+    description: Docker Container Image
+    derived_from: tosca.artifacts.Deployment.Image
 node_types:
   org.heappe.nodes.pub.Job:
-    derived_from: org.alien4cloud.nodes.Job
+    derived_from: tosca.nodes.Root
     abstract: true
     description: >
       HEAppE Job (abstract)
