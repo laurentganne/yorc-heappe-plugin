@@ -272,23 +272,23 @@ topology_template:
         Job_start:
           target: TestJob
           activities:
-            - delegate: start
+            - set_state: started
           on_success:
             - Dataset_start
         Dataset_start:
           target: Dataset
           activities:
-            - delegate: start
+            - set_state: started
     stop:
       steps:
         Job_stop:
           target: TestJob
           activities:
-            - delegate: stop
+            - set_state: stopped
         Dataset_stop:
           target: Dataset
           activities:
-            - delegate: stop
+            - set_state: stopped
           on_success:
             - Job_stop
     run:
@@ -394,20 +394,7 @@ topology_template:
             - set_state: started
     cancel:
       steps:
-        Job_cancelled:
+        Job_cancel:
           target: TestJob
           activities:
             - set_state: cancelled
-        Job_cancel:
-          target: TestJob
-          operation_host: ORCHESTRATOR
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.cancel
-          on_success:
-            - Job_cancelled
-        Job_cancelling:
-          target: TestJob
-          activities:
-            - set_state: cancelling
-          on_success:
-            - Job_cancel
