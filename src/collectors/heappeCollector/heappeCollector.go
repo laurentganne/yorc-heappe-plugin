@@ -54,5 +54,6 @@ func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg conf
 	if err != nil {
 		return nil, err
 	}
+
 	return nil, err
 }

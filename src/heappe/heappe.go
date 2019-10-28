@@ -16,6 +16,7 @@ package heappe
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -33,6 +34,8 @@ const (
 	heappeGetFileTransferMethodREST = "/heappe/FileTransfer/GetFileTransferMethod"
 	heappeEndFileTransferREST       = "/heappe/FileTransfer/EndFileTransfer"
 	heappeListChangedFilesREST      = "/heappe/FileTransfer/ListChangedFilesForJob"
+	heappeUserUsageReportREST       = "/heappe/JobReporting/GetUserResourceUsageReport"
+	heappeListAdaptorUserGroupsREST = "/heappe/JobReporting/ListAdaptorUserGroups"
 	locationURLPropertyName         = "url"
 	locationUserPropertyName        = "user"
 	locationPasswordPropertyName    = "password"
@@ -51,6 +54,8 @@ type HEAppEClient interface {
 	GetFileTransferMethod(jobID int64) (FileTransferMethod, error)
 	EndFileTransfer(jobID int64, ft FileTransferMethod) error
 	ListChangedFilesForJob(jobID int64) ([]string, error)
+	ListAdaptorUserGroups() ([]AdaptorUserGroup, error)
+	GetUserResourceUsageReport(userID int64, startTime, endTime time.Time) (*UserResourceUsageReport, error)
 }
 
 // GetClient returns a HEAppE client for a given location
@@ -328,6 +333,14 @@ func (h *heappeClient) ListChangedFilesForJob(jobID int64) ([]string, error) {
 
 	return filenames, err
 
+}
+
+func (h *heappeClient) ListAdaptorUserGroups() ([]AdaptorUserGroup, error) {
+	return nil, errors.Errorf("Not yet implemented")
+}
+
+func (h *heappeClient) GetUserResourceUsageReport(userID int64, startTime, endTime time.Time) (*UserResourceUsageReport, error) {
+	return nil, errors.Errorf("Not yet implemented")
 }
 
 func (h *heappeClient) authenticate() (string, error) {

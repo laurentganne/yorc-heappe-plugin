@@ -186,10 +186,65 @@ type FileTransferMethod struct {
 	Credentials    AsymmetricKeyCredentials `json:"credentials"`
 }
 
-// EndFileTransferRESTParams holds paremeters used in the REST API call to notify
+// EndFileTransferRESTParams holds parameters used in the REST API call to notify
 // the end of files trasnfer
 type EndFileTransferRESTParams struct {
 	SubmittedJobInfoID int64              `json:"submittedJobInfoId"`
 	UsedTransferMethod FileTransferMethod `json:"usedTransferMethod"`
 	SessionCode        string             `json:"sessionCode"`
+}
+
+// AdaptorUser hold user name and id properties
+type AdaptorUser struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+// AdaptorUserGroup holds user properties
+type AdaptorUserGroup struct {
+	ID               int64         `json:"id"`
+	Name             string        `json:"name"`
+	Description      string        `json:"description"`
+	AccountingString string        `json:"accountingString"`
+	Users            []AdaptorUser `json:"users"`
+}
+
+// SubmittedJobInfoUsageReport holds the description of resources used for a job
+type SubmittedJobInfoUsageReport struct {
+	ID                  int64   `json:"id"`
+	Name                string  `json:"name"`
+	State               int     `json:"state"`
+	Priority            int     `json:"priority"`
+	Project             string  `json:"project"`
+	CommandTemplateID   int64   `json:"commandTemplateId"`
+	CreationTime        string  `json:"creationTime"`
+	SubmitTime          string  `json:"submitTime"`
+	StartTime           string  `json:"startTime"`
+	EndTime             string  `json:"endTime"`
+	TotalAllocatedTime  float64 `json:"totalAllocatedTime,omitempty"`
+	AllParameters       string  `json:"allParameters"`
+	TotalCorehoursUsage float64 `json:"totalCorehoursUsage,omitempty"`
+}
+
+// NodeTypeAggregatedUsage hold usage for a cluster node type
+type NodeTypeAggregatedUsage struct {
+	ClusterNodeType     ClusterNodeType               `json:"clusterNodeType"`
+	SubmittedJobs       []SubmittedJobInfoUsageReport `json:"submittedJobs"`
+	TotalCorehoursUsage float64                       `json:"totalCorehoursUsage,omitempty"`
+}
+
+// UserAggregatedUsage holds resources usage for a user
+type UserAggregatedUsage struct {
+	User                AdaptorUser               `json:"user"`
+	NodeTypeReports     []NodeTypeAggregatedUsage `json:"nodeTypeReports"`
+	TotalCorehoursUsage float64                   `json:"totalCorehoursUsage,omitempty"`
+}
+
+// UserResourceUsageReport holds a report of resources by a user for a given time frame
+type UserResourceUsageReport struct {
+	User                AdaptorUser               `json:"user"`
+	NodeTypeReports     []NodeTypeAggregatedUsage `json:"nodeTypeReports"`
+	StartTime           string                    `json:"startTime"`
+	EndTime             string                    `json:"endTime"`
+	TotalCorehoursUsage float64                   `json:"totalCorehoursUsage,omitempty"`
 }
