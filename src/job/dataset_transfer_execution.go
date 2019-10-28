@@ -277,6 +277,13 @@ func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 
 		remotePath := filepath.Join(transferMethod.SharedBasepath, filename)
 		localPath := filepath.Join(copyDir, filename)
+		localDir := filepath.Dir(localPath)
+		if localDir != "." {
+			err = os.MkdirAll(localDir, 0700)
+			if err != nil {
+				return errors.Wrapf(err, "Failed to create local dir %s", localDir)
+			}
+		}
 		copyCmd := exec.Command("/bin/scp", "-i", pkeyFile,
 			"-o", "StrictHostKeyChecking=no",
 			fmt.Sprintf("%s@%s:%s",
