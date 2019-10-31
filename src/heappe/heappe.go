@@ -41,8 +41,8 @@ const (
 	locationPasswordPropertyName    = "password"
 )
 
-// HEAppEClient is the client interface to HEAppE service
-type HEAppEClient interface {
+// Client is the client interface to HEAppE service
+type Client interface {
 	CreateJob(job JobSpecification) (int64, error)
 	SubmitJob(jobID int64) error
 	CancelJob(jobID int64) error
@@ -59,7 +59,7 @@ type HEAppEClient interface {
 }
 
 // GetClient returns a HEAppE client for a given location
-func GetClient(locationProps config.DynamicMap) (HEAppEClient, error) {
+func GetClient(locationProps config.DynamicMap) (Client, error) {
 
 	url := locationProps.GetString(locationURLPropertyName)
 	if url == "" {
@@ -75,7 +75,7 @@ func GetClient(locationProps config.DynamicMap) (HEAppEClient, error) {
 }
 
 // getBasicAuthClient returns a client performing a basic user/pasword authentication
-func getBasicAuthClient(url, username, password string) HEAppEClient {
+func getBasicAuthClient(url, username, password string) Client {
 	return &heappeClient{
 		auth: Authentication{
 			Credentials: PasswordCredentials{

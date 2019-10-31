@@ -14,11 +14,13 @@
 
 package heappe
 
-// Protocole used to transfer files to the HPC cluster
+// FileTransferProtocol used to transfer files to the HPC cluster
 type FileTransferProtocol int
 
 const (
+	// NetworkShare file transfer protocol
 	NetworkShare FileTransferProtocol = iota
+	// SftpScp file transfer protocol
 	SftpScp
 )
 

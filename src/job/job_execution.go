@@ -446,7 +446,7 @@ func getIntNodePropertyValue(kv *api.KV, deploymentID, nodeName, propertyName st
 	return result, err
 }
 
-func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (heappe.HEAppEClient, error) {
+func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (heappe.Client, error) {
 	locationMgr, err := locations.GetManager(cfg)
 	if err != nil {
 		return nil, err

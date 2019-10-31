@@ -183,7 +183,7 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 	return deregister, err
 }
 
-func (o *ActionOperator) getJobOutputs(ctx context.Context, heappeClient heappe.HEAppEClient,
+func (o *ActionOperator) getJobOutputs(ctx context.Context, heappeClient heappe.Client,
 	deploymentID, nodeName string, action *prov.Action, jobInfo heappe.SubmittedJobInfo) error {
 
 	var err error
