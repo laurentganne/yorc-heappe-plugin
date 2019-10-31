@@ -336,7 +336,26 @@ func (h *heappeClient) ListChangedFilesForJob(jobID int64) ([]string, error) {
 }
 
 func (h *heappeClient) ListAdaptorUserGroups() ([]AdaptorUserGroup, error) {
-	return nil, errors.Errorf("Not yet implemented")
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	params := ListAdaptorUserGroupsRESTParams{
+		SessionCode: h.sessionID,
+	}
+
+	result := make([]AdaptorUserGroup, 0)
+	err := h.httpClient.doRequest(http.MethodPost, heappeListChangedFilesREST, http.StatusOK, params, &result)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to download part of job outputs")
+	}
+
+	return result, errors.Errorf("Not yet implemented")
 }
 
 func (h *heappeClient) GetUserResourceUsageReport(userID int64, startTime, endTime time.Time) (*UserResourceUsageReport, error) {

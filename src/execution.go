@@ -86,33 +86,32 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 		}
 
 		return exec, err
-	} else {
+	}
 
-		isReceiveDataset := false
-		isSendDataset, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeSendDatasetType)
+	isReceiveDataset := false
+	isSendDataset, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeSendDatasetType)
+	if err != nil {
+		return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
+	}
+	if !isSendDataset {
+		isReceiveDataset, err = deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeReceiveDatasetType)
 		if err != nil {
 			return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
 		}
-		if !isSendDataset {
-			isReceiveDataset, err = deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeReceiveDatasetType)
-			if err != nil {
-				return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
-			}
-		}
+	}
 
-		if !isSendDataset && !isReceiveDataset {
-			return exec, errors.Errorf("operation %q supported only for nodes derived from %q, %q or %q",
-				operation, heappeJobType, heappeSendDatasetType, heappeReceiveDatasetType)
-		}
+	if !isSendDataset && !isReceiveDataset {
+		return exec, errors.Errorf("operation %q supported only for nodes derived from %q, %q or %q",
+			operation, heappeJobType, heappeSendDatasetType, heappeReceiveDatasetType)
+	}
 
-		exec = &job.DatasetTransferExecution{
-			KV:           kv,
-			Cfg:          cfg,
-			DeploymentID: deploymentID,
-			TaskID:       taskID,
-			NodeName:     nodeName,
-			Operation:    operation,
-		}
+	exec = &job.DatasetTransferExecution{
+		KV:           kv,
+		Cfg:          cfg,
+		DeploymentID: deploymentID,
+		TaskID:       taskID,
+		NodeName:     nodeName,
+		Operation:    operation,
 	}
 
 	return exec, exec.ResolveExecution()

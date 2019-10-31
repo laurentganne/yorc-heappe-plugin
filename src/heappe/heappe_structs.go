@@ -196,6 +196,12 @@ type EndFileTransferRESTParams struct {
 	SessionCode        string             `json:"sessionCode"`
 }
 
+// ListAdaptorUserGroupsRESTParams holds parameters used in the REST API call to
+// get details on users
+type ListAdaptorUserGroupsRESTParams struct {
+	SessionCode string `json:"sessionCode"`
+}
+
 // AdaptorUser hold user name and id properties
 type AdaptorUser struct {
 	ID       int64  `json:"id"`
