@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/laurentganne/yorc-heappe-plugin/v1/collectors"
-	"github.com/laurentganne/yorc-heappe-plugin/v1/collectors/heappeCollector"
+	"github.com/laurentganne/yorc-heappe-plugin/v1/collectors/heappecollector"
 	"github.com/pkg/errors"
 
 	"github.com/ystia/yorc/v4/config"
@@ -35,7 +35,7 @@ type infraUsageCollector struct {
 func newInfraUsageCollector() prov.InfraUsageCollector {
 	// List all the collectors delegates implemented in the plugin
 	collectorDelegates := make(map[string]collectors.InfraUsageCollectorDelegate)
-	collectorDelegates[heappeInfrastructureType] = heappeCollector.NewInfraUsageCollectorDelegate()
+	collectorDelegates[heappeInfrastructureType] = heappecollector.NewInfraUsageCollectorDelegate()
 
 	return &infraUsageCollector{
 		collectorDelegates: collectorDelegates,

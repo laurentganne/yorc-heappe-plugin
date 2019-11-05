@@ -204,6 +204,7 @@ github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/labstack/gommon v0.2.8/go.mod h1:/tj9csK2iPSBvn+3NLM9e52usepMtrd5ilFYA+wQNJ4=
 github.com/labstack/gommon v0.2.9/go.mod h1:E8ZTmW9vw5az5/ZyHWCp0Lw4OH2ecsaBP1C/NKavGG4=
 github.com/laurentganne/yorc-heappe-plugin v0.0.0-20191022084256-921a66631030 h1:nTl7Ew+P5jWL/wDj0l7+1h1oBSAEX/U4D/MWVn01LQg=
+github.com/laurentganne/yorc-heappe-plugin v0.0.0-20191031173925-6fd03034cdc1 h1:0bQ2eFn7sQztQb8vu+irLyH2TeVsw7zK0pVYMumjYI0=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/magiconair/properties v0.0.0-20160908093658-0723e352fa358f9322c938cc2dadda874e9151a9/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/magiconair/properties v1.8.1 h1:ZC2Vc7/ZFkGmsVC9KvOjumD+G5lXy2RtTKyzRKO2BQ4=

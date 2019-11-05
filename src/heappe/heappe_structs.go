@@ -248,6 +248,15 @@ type UserAggregatedUsage struct {
 	TotalCorehoursUsage float64                   `json:"totalCorehoursUsage,omitempty"`
 }
 
+// UserResourceUsageRESTParams holds parameters used in the REST API call to
+// get resources usage report for a user
+type UserResourceUsageRESTParams struct {
+	UserID      int64  `json:"userID"`
+	StartTime   string `json:"startTime"`
+	EndTime     string `json:"endTime"`
+	SessionCode string `json:"sessionCode"`
+}
+
 // UserResourceUsageReport holds a report of resources by a user for a given time frame
 type UserResourceUsageReport struct {
 	User                AdaptorUser               `json:"user"`

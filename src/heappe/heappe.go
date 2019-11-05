@@ -16,11 +16,11 @@ package heappe
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/ystia/yorc/v4/config"
+	"github.com/ystia/yorc/v4/log"
 )
 
 const (
@@ -37,8 +37,9 @@ const (
 	heappeUserUsageReportREST       = "/heappe/JobReporting/GetUserResourceUsageReport"
 	heappeListAdaptorUserGroupsREST = "/heappe/JobReporting/ListAdaptorUserGroups"
 	locationURLPropertyName         = "url"
-	locationUserPropertyName        = "user"
-	locationPasswordPropertyName    = "password"
+	// LocationUserPropertyName hold the name of user used to connect to HEAppE
+	LocationUserPropertyName     = "user"
+	locationPasswordPropertyName = "password"
 )
 
 // Client is the client interface to HEAppE service
@@ -55,7 +56,7 @@ type Client interface {
 	EndFileTransfer(jobID int64, ft FileTransferMethod) error
 	ListChangedFilesForJob(jobID int64) ([]string, error)
 	ListAdaptorUserGroups() ([]AdaptorUserGroup, error)
-	GetUserResourceUsageReport(userID int64, startTime, endTime time.Time) (*UserResourceUsageReport, error)
+	GetUserResourceUsageReport(userID int64, startTime, endTime string) (*UserResourceUsageReport, error)
 }
 
 // GetClient returns a HEAppE client for a given location
@@ -65,7 +66,7 @@ func GetClient(locationProps config.DynamicMap) (Client, error) {
 	if url == "" {
 		return nil, errors.Errorf("No URL defined in HEAppE location configuration")
 	}
-	username := locationProps.GetString(locationUserPropertyName)
+	username := locationProps.GetString(LocationUserPropertyName)
 	if username == "" {
 		return nil, errors.Errorf("No user defined in location")
 	}
@@ -350,16 +351,40 @@ func (h *heappeClient) ListAdaptorUserGroups() ([]AdaptorUserGroup, error) {
 	}
 
 	result := make([]AdaptorUserGroup, 0)
-	err := h.httpClient.doRequest(http.MethodPost, heappeListChangedFilesREST, http.StatusOK, params, &result)
+	err := h.httpClient.doRequest(http.MethodPost, heappeListAdaptorUserGroupsREST, http.StatusOK, params, &result)
 	if err != nil {
-		err = errors.Wrap(err, "Failed to download part of job outputs")
+		log.Printf("Error calling HEAppE API %s: %s", heappeListAdaptorUserGroupsREST, err.Error())
+		err = errors.Wrap(err, "Failed to get list of users")
 	}
 
-	return result, errors.Errorf("Not yet implemented")
+	return result, err
 }
 
-func (h *heappeClient) GetUserResourceUsageReport(userID int64, startTime, endTime time.Time) (*UserResourceUsageReport, error) {
-	return nil, errors.Errorf("Not yet implemented")
+func (h *heappeClient) GetUserResourceUsageReport(userID int64, startTime, endTime string) (*UserResourceUsageReport, error) {
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	params := UserResourceUsageRESTParams{
+		UserID:      userID,
+		StartTime:   startTime,
+		EndTime:     endTime,
+		SessionCode: h.sessionID,
+	}
+
+	var report UserResourceUsageReport
+	err := h.httpClient.doRequest(http.MethodPost, heappeUserUsageReportREST, http.StatusOK, params, &report)
+	if err != nil {
+		log.Printf("Error calling HEAppE API %s: %s", heappeUserUsageReportREST, err.Error())
+		err = errors.Wrap(err, "Failed to get resources usage report")
+	}
+
+	return &report, err
 }
 
 func (h *heappeClient) authenticate() (string, error) {
