@@ -36,6 +36,8 @@ const (
 	heappeListChangedFilesREST      = "/heappe/FileTransfer/ListChangedFilesForJob"
 	heappeUserUsageReportREST       = "/heappe/JobReporting/GetUserResourceUsageReport"
 	heappeListAdaptorUserGroupsREST = "/heappe/JobReporting/ListAdaptorUserGroups"
+	heappeListAvailableClustersREST = "/heappe/ClusterInformation/ListAvailableClusters"
+	heappeNodeUsageREST             = "/heappe/ClusterInformation/CurrentClusterNodeUsage"
 	locationURLPropertyName         = "url"
 	// LocationUserPropertyName hold the name of user used to connect to HEAppE
 	LocationUserPropertyName     = "user"
@@ -57,6 +59,7 @@ type Client interface {
 	ListChangedFilesForJob(jobID int64) ([]string, error)
 	ListAdaptorUserGroups() ([]AdaptorUserGroup, error)
 	GetUserResourceUsageReport(userID int64, startTime, endTime string) (*UserResourceUsageReport, error)
+	ListAvailableClusters() ([]ClusterInfo, error)
 }
 
 // GetClient returns a HEAppE client for a given location
@@ -385,6 +388,26 @@ func (h *heappeClient) GetUserResourceUsageReport(userID int64, startTime, endTi
 	}
 
 	return &report, err
+}
+
+func (h *heappeClient) ListAvailableClusters() ([]ClusterInfo, error) {
+
+	if h.sessionID == "" {
+		var err error
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	result := make([]ClusterInfo, 0)
+	err := h.httpClient.doRequest(http.MethodPost, heappeListAvailableClustersREST, http.StatusOK, "", &result)
+	if err != nil {
+		log.Printf("Error calling HEAppE API %s: %s", heappeListAvailableClustersREST, err.Error())
+		err = errors.Wrap(err, "Failed to get list of available clusters")
+	}
+
+	return result, err
 }
 
 func (h *heappeClient) authenticate() (string, error) {

@@ -265,3 +265,11 @@ type UserResourceUsageReport struct {
 	EndTime             string                    `json:"endTime"`
 	TotalCorehoursUsage float64                   `json:"totalCorehoursUsage,omitempty"`
 }
+
+// ClusterInfo holds info on clusters managed by HEAppE
+type ClusterInfo struct {
+	ID          int64             `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	NodeTypes   []ClusterNodeType `json:"nodetypes"`
+}
