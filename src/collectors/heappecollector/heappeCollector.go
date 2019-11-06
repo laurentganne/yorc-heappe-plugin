@@ -17,7 +17,6 @@ package heappecollector
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/laurentganne/yorc-heappe-plugin/v1/collectors"
 	"github.com/laurentganne/yorc-heappe-plugin/v1/heappe"
@@ -31,6 +30,9 @@ import (
 const (
 	infrastructureType = "heappe"
 )
+
+// ClustersUsage defines the structure of the collected info
+type ClustersUsage map[string][]heappe.ClusterNodeUsage
 
 type heappeUsageCollectorDelegate struct {
 }
@@ -64,23 +66,30 @@ func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg conf
 		return nil, err
 	}
 
-	// Getting corresponding user ID
-	userID, err := getUserID(heappeClient, userName)
+	bytesVal, err := getClustersNodeUsage(heappeClient)
 	if err != nil {
 		return nil, err
 	}
 
-	currentTime := time.Now()
-	endTimeStr := currentTime.Format(time.RFC3339)
-	startTime := currentTime.AddDate(0, -1, 0)
-	startTimeStr := startTime.Format(time.RFC3339)
-	report, err := heappeClient.GetUserResourceUsageReport(userID, startTimeStr, endTimeStr)
+	/*
 
-	bytesVal, err := json.Marshal(report)
-	if err != nil {
-		return nil, err
-	}
+		// Getting corresponding user ID
+		userID, err := getUserID(heappeClient, userName)
+		if err != nil {
+			return nil, err
+		}
 
+		currentTime := time.Now()
+		endTimeStr := currentTime.Format(time.RFC3339)
+		startTime := currentTime.AddDate(0, -1, 0)
+		startTimeStr := startTime.Format(time.RFC3339)
+		report, err := heappeClient.GetUserResourceUsageReport(userID, startTimeStr, endTimeStr)
+
+		bytesVal, err := json.Marshal(report)
+		if err != nil {
+			return nil, err
+		}
+	*/
 	var result map[string]interface{}
 	err = json.Unmarshal(bytesVal, &result)
 
@@ -89,6 +98,31 @@ func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg conf
 
 	}
 	return result, err
+}
+
+func getClustersNodeUsage(client heappe.Client) ([]byte, error) {
+
+	// First get IDs of nodes in the cluster
+	clusters, err := client.ListAvailableClusters()
+	if err != nil {
+		return nil, err
+	}
+
+	clustersUsage := make(ClustersUsage, len(clusters))
+	for _, cluster := range clusters {
+		var nodesUsage []heappe.ClusterNodeUsage
+		for _, nodeType := range cluster.NodeTypes {
+			nodeUsage, err := client.GetCurrentClusterNodeUsage(nodeType.ID)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Failed to get usage for node type %s on cluster %s",
+					cluster.Name, nodeType.Name)
+			}
+			nodesUsage = append(nodesUsage, nodeUsage)
+		}
+		clustersUsage[cluster.Name] = nodesUsage
+	}
+
+	return json.Marshal(clustersUsage)
 }
 
 func getUserID(client heappe.Client, userName string) (int64, error) {

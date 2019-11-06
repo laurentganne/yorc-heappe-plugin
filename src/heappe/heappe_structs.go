@@ -271,5 +271,19 @@ type ClusterInfo struct {
 	ID          int64             `json:"id"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
-	NodeTypes   []ClusterNodeType `json:"nodetypes"`
+	NodeTypes   []ClusterNodeType `json:"nodeTypes"`
+}
+
+// ClusterNodeUsage holds usage details for a given node of a cluster
+type ClusterNodeUsage struct {
+	NodeType         ClusterNodeType `json:"nodeType"`
+	NodesUsed        int             `json:"nodesUsed"`
+	CoresUsedPerNode []int           `json:"coresUsedPerNode"`
+}
+
+// ClusterNodeUsageRESTParams holds parameters used in the REST API call to
+// get the current usage of a given cluster node
+type ClusterNodeUsageRESTParams struct {
+	ClusterNodeID int64  `json:"clusterNodeId"`
+	SessionCode   string `json:"sessionCode"`
 }

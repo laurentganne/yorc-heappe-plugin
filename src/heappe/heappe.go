@@ -60,6 +60,7 @@ type Client interface {
 	ListAdaptorUserGroups() ([]AdaptorUserGroup, error)
 	GetUserResourceUsageReport(userID int64, startTime, endTime string) (*UserResourceUsageReport, error)
 	ListAvailableClusters() ([]ClusterInfo, error)
+	GetCurrentClusterNodeUsage(nodeID int64) (ClusterNodeUsage, error)
 }
 
 // GetClient returns a HEAppE client for a given location
@@ -401,10 +402,35 @@ func (h *heappeClient) ListAvailableClusters() ([]ClusterInfo, error) {
 	}
 
 	result := make([]ClusterInfo, 0)
-	err := h.httpClient.doRequest(http.MethodPost, heappeListAvailableClustersREST, http.StatusOK, "", &result)
+	err := h.httpClient.doRequest(http.MethodGet, heappeListAvailableClustersREST, http.StatusOK, "", &result)
 	if err != nil {
 		log.Printf("Error calling HEAppE API %s: %s", heappeListAvailableClustersREST, err.Error())
 		err = errors.Wrap(err, "Failed to get list of available clusters")
+	}
+
+	return result, err
+}
+
+func (h *heappeClient) GetCurrentClusterNodeUsage(nodeID int64) (ClusterNodeUsage, error) {
+
+	var result ClusterNodeUsage
+	var err error
+	if h.sessionID == "" {
+		h.sessionID, err = h.authenticate()
+		if err != nil {
+			return result, err
+		}
+	}
+
+	params := ClusterNodeUsageRESTParams{
+		ClusterNodeID: nodeID,
+		SessionCode:   h.sessionID,
+	}
+
+	err = h.httpClient.doRequest(http.MethodPost, heappeNodeUsageREST, http.StatusOK, params, &result)
+	if err != nil {
+		log.Printf("Error calling HEAppE API %s: %s", heappeNodeUsageREST, err.Error())
+		err = errors.Wrap(err, "Failed to get list of users")
 	}
 
 	return result, err
