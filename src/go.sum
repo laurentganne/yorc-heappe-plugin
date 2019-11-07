@@ -325,6 +325,8 @@ github.com/ystia/yorc/v3 v3.2.0-M2 h1:qQ+OqvEukTImu12PLytext1GPcWQX800dXtGOQCOXl
 github.com/ystia/yorc/v3 v3.2.0-M2/go.mod h1:htqdNf/NgyVeN3Swk604f8X1/tGxzCMcGE/FdkwpJ4g=
 github.com/ystia/yorc/v3 v3.2.0-M4 h1:HrMEzPXHKlmRxI6o126GRRKWTkclRT9yIYqvtQL19bE=
 github.com/ystia/yorc/v3 v3.2.0-M4/go.mod h1:ghDUtQvmfFOizQdzGe/8tpxQYHB6mZmUreB6RJNHdSI=
+github.com/ystia/yorc/v4 v4.0.0-20191107131403-8c93eed3fae6 h1:MJGh+Ppgqxbm14pQ6hNZx4OwVcbw46l1CcpYkBrQwJk=
+github.com/ystia/yorc/v4 v4.0.0-20191107131403-8c93eed3fae6/go.mod h1:FKnyKsHgDi1jYCPOmHYmc/SmBOKkUKq3v92fGh7ULic=
 github.com/ystia/yorc/v4 v4.0.0-M4 h1:md+xJw4JUVgpMW6dHvwLwTelYRISclHyHur5HiJFBq8=
 github.com/ystia/yorc/v4 v4.0.0-M4/go.mod h1:sXPa0B00kBzvety+m6C5dhnO3PFR5gnXvkZD74Hx/ZI=
 github.com/ystia/yorc/v4 v4.0.0-M5 h1:yfN2Tb0PZ5jRgVIq/uFcyc193plcAPdCjmbq+Q5CqLQ=

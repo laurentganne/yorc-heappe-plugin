@@ -41,8 +41,8 @@ const (
 	jobIDConsulAttribute                  = "job_id"
 )
 
-// JobExecution holds job properties
-type JobExecution struct {
+// Execution holds job Execution properties
+type Execution struct {
 	KV                     *api.KV
 	Cfg                    config.Configuration
 	DeploymentID           string
@@ -53,12 +53,13 @@ type JobExecution struct {
 	MonitoringTimeInterval time.Duration
 }
 
-func (e *JobExecution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
+// ExecuteAsync executes an asynchronous operation
+func (e *Execution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
 	if e.Operation.Name != tosca.RunnableRunOperationName {
 		return nil, 0, errors.Errorf("Unsupported asynchronous operation %q", e.Operation.Name)
 	}
 
-	jobID, err := e.getJobID()
+	jobID, err := e.getJobID(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -72,7 +73,8 @@ func (e *JobExecution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Dur
 	return &prov.Action{ActionType: "heappe-job-monitoring", Data: data}, e.MonitoringTimeInterval, err
 }
 
-func (e *JobExecution) Execute(ctx context.Context) error {
+// Execute executes a synchronous operation
+func (e *Execution) Execute(ctx context.Context) error {
 
 	var err error
 	switch e.Operation.Name {
@@ -119,18 +121,19 @@ func (e *JobExecution) Execute(ctx context.Context) error {
 	return err
 }
 
-func (e *JobExecution) ResolveExecution() error {
+// ResolveExecution is not yet implemented
+func (e *Execution) ResolveExecution(ctx context.Context) error {
 	return nil
 }
 
-func (e *JobExecution) createJob(ctx context.Context) error {
+func (e *Execution) createJob(ctx context.Context) error {
 
-	jobSpec, err := e.getJobSpecification()
+	jobSpec, err := e.getJobSpecification(ctx)
 	if err != nil {
 		return err
 	}
 
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -141,7 +144,7 @@ func (e *JobExecution) createJob(ctx context.Context) error {
 	}
 
 	// Store the job id
-	err = deployments.SetAttributeForAllInstances(e.KV, e.DeploymentID, e.NodeName,
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
 		jobIDConsulAttribute, strconv.FormatInt(jobID, 10))
 	if err != nil {
 		err = errors.Wrapf(err, "Job %d created on HEAppE, but failed to store this job id", jobID)
@@ -149,14 +152,14 @@ func (e *JobExecution) createJob(ctx context.Context) error {
 	return err
 }
 
-func (e *JobExecution) deleteJob(ctx context.Context) error {
+func (e *Execution) deleteJob(ctx context.Context) error {
 
-	jobID, err := e.getJobID()
+	jobID, err := e.getJobID(ctx)
 	if err != nil {
 		return err
 	}
 
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -164,14 +167,14 @@ func (e *JobExecution) deleteJob(ctx context.Context) error {
 	return heappeClient.DeleteJob(jobID)
 }
 
-func (e *JobExecution) submitJob(ctx context.Context) error {
+func (e *Execution) submitJob(ctx context.Context) error {
 
-	jobID, err := e.getJobID()
+	jobID, err := e.getJobID(ctx)
 	if err != nil {
 		return err
 	}
 
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -179,14 +182,14 @@ func (e *JobExecution) submitJob(ctx context.Context) error {
 	return heappeClient.SubmitJob(jobID)
 }
 
-func (e *JobExecution) cancelJob(ctx context.Context) error {
+func (e *Execution) cancelJob(ctx context.Context) error {
 
-	jobID, err := e.getJobID()
+	jobID, err := e.getJobID(ctx)
 	if err != nil {
 		return err
 	}
 
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -194,10 +197,10 @@ func (e *JobExecution) cancelJob(ctx context.Context) error {
 	return heappeClient.CancelJob(jobID)
 }
 
-func (e *JobExecution) getJobID() (int64, error) {
+func (e *Execution) getJobID(ctx context.Context) (int64, error) {
 	var jobID int64
 
-	val, err := deployments.GetInstanceAttributeValue(e.KV, e.DeploymentID, e.NodeName, "0", jobIDConsulAttribute)
+	val, err := deployments.GetInstanceAttributeValue(ctx, e.DeploymentID, e.NodeName, "0", jobIDConsulAttribute)
 	if err != nil {
 		return jobID, errors.Wrapf(err, "Failed to get job id for deployment %s node %s", e.DeploymentID, e.NodeName)
 	} else if val == nil {
@@ -214,18 +217,18 @@ func (e *JobExecution) getJobID() (int64, error) {
 
 }
 
-func (e *JobExecution) getJobSpecification() (heappe.JobSpecification, error) {
+func (e *Execution) getJobSpecification(ctx context.Context) (heappe.JobSpecification, error) {
 
 	var jobSpec heappe.JobSpecification
 	var err error
 
-	jobSpec.Name, err = deployments.GetStringNodePropertyValue(e.KV, e.DeploymentID,
+	jobSpec.Name, err = deployments.GetStringNodePropertyValue(ctx, e.DeploymentID,
 		e.NodeName, jobSpecificationProperty, "name")
 	if err != nil {
 		return jobSpec, err
 	}
 
-	jobSpec.Project, err = deployments.GetStringNodePropertyValue(e.KV, e.DeploymentID,
+	jobSpec.Project, err = deployments.GetStringNodePropertyValue(ctx, e.DeploymentID,
 		e.NodeName, jobSpecificationProperty, "project")
 	if err != nil {
 		return jobSpec, err
@@ -244,12 +247,12 @@ func (e *JobExecution) getJobSpecification() (heappe.JobSpecification, error) {
 	}
 
 	for _, fieldPropName := range fieldPropNames {
-		*(fieldPropName.field), err = getIntNodePropertyValue(e.KV, e.DeploymentID,
+		*(fieldPropName.field), err = getIntNodePropertyValue(ctx, e.DeploymentID,
 			e.NodeName, jobSpecificationProperty, fieldPropName.propName)
 	}
 
 	// Getting associated tasks
-	tasks, err := deployments.GetNodePropertyValue(e.KV, e.DeploymentID, e.NodeName, jobSpecificationProperty, "tasks")
+	tasks, err := deployments.GetNodePropertyValue(ctx, e.DeploymentID, e.NodeName, jobSpecificationProperty, "tasks")
 	if err != nil {
 		return jobSpec, err
 	}
@@ -431,11 +434,11 @@ func (e *JobExecution) getJobSpecification() (heappe.JobSpecification, error) {
 	return jobSpec, err
 }
 
-func getIntNodePropertyValue(kv *api.KV, deploymentID, nodeName, propertyName string,
+func getIntNodePropertyValue(ctx context.Context, deploymentID, nodeName, propertyName string,
 	nestedKeys ...string) (int, error) {
 
 	var result int
-	strVal, err := deployments.GetStringNodePropertyValue(kv, deploymentID, nodeName, propertyName, nestedKeys...)
+	strVal, err := deployments.GetStringNodePropertyValue(ctx, deploymentID, nodeName, propertyName, nestedKeys...)
 	if err != nil {
 		return result, err
 	}
@@ -446,13 +449,13 @@ func getIntNodePropertyValue(kv *api.KV, deploymentID, nodeName, propertyName st
 	return result, err
 }
 
-func getHEAppEClient(cfg config.Configuration, deploymentID, nodeName string) (heappe.Client, error) {
+func getHEAppEClient(ctx context.Context, cfg config.Configuration, deploymentID, nodeName string) (heappe.Client, error) {
 	locationMgr, err := locations.GetManager(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
+	locationProps, err := locationMgr.GetLocationPropertiesForNode(ctx, deploymentID,
 		nodeName, infrastructureType)
 	if err != nil {
 		return nil, err

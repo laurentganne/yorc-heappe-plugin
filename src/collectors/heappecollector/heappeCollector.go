@@ -44,14 +44,14 @@ func NewInfraUsageCollectorDelegate() collectors.InfraUsageCollectorDelegate {
 
 // CollectInfo allows to collect usage info about defined infrastructure
 func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg config.Configuration,
-	taskID, infraName string) (map[string]interface{}, error) {
+	taskID, locationName string) (map[string]interface{}, error) {
 
 	locationMgr, err := locations.GetManager(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	locationProps, err := locationMgr.GetPropertiesForFirstLocationOfType(infrastructureType)
+	locationProps, err := locationMgr.GetLocationProperties(locationName, infrastructureType)
 	if err != nil {
 		return nil, err
 	}

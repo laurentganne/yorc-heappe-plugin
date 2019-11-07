@@ -22,7 +22,7 @@ import (
 
 // InfraUsageCollectorDelegate is the interface for collecting information about defined infrastructure usage
 //
-// CollectInfo returns data about infrastructure usage for defined infrastructure
+// CollectInfo returns data about infrastructure usage for the defined location
 type InfraUsageCollectorDelegate interface {
-	CollectInfo(ctx context.Context, cfg config.Configuration, taskID, infraName string) (map[string]interface{}, error)
+	CollectInfo(ctx context.Context, cfg config.Configuration, taskID, locationName string) (map[string]interface{}, error)
 }

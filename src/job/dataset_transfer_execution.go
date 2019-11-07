@@ -59,12 +59,14 @@ type DatasetTransferExecution struct {
 	VarInputsNames []string
 }
 
+// ExecuteAsync executes an asynchronous operation - not supported here
 func (e *DatasetTransferExecution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
 
 	return nil, 0, errors.Errorf("Unsupported asynchronous operation %q for dataset transfer", e.Operation.Name)
 
 }
 
+// Execute executes a synchronous operation
 func (e *DatasetTransferExecution) Execute(ctx context.Context) error {
 
 	var err error
@@ -96,18 +98,19 @@ func (e *DatasetTransferExecution) Execute(ctx context.Context) error {
 	return err
 }
 
-func (e *DatasetTransferExecution) ResolveExecution() error {
+// ResolveExecution resolves inputs and artifacts before the execution of an operation
+func (e *DatasetTransferExecution) ResolveExecution(ctx context.Context) error {
 	log.Debugf("Preparing execution of operation %q on node %q for deployment %q", e.Operation.Name, e.NodeName, e.DeploymentID)
-	ovPath, err := operations.GetOverlayPath(e.KV, e.Cfg, e.TaskID, e.DeploymentID)
+	ovPath, err := operations.GetOverlayPath(e.Cfg, e.TaskID, e.DeploymentID)
 	if err != nil {
 		return err
 	}
 	e.OverlayPath = ovPath
 
-	if err = e.resolveInputs(); err != nil {
+	if err = e.resolveInputs(ctx); err != nil {
 		return err
 	}
-	if err = e.resolveArtifacts(); err != nil {
+	if err = e.resolveArtifacts(ctx); err != nil {
 		return err
 	}
 
@@ -116,7 +119,7 @@ func (e *DatasetTransferExecution) ResolveExecution() error {
 
 func (e *DatasetTransferExecution) transferDataset(ctx context.Context) error {
 
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -212,7 +215,7 @@ func (e *DatasetTransferExecution) getDatasetFileNames(jobID int64) ([]string, e
 func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 
 	// Get details on remote host where to get result files
-	heappeClient, err := getHEAppEClient(e.Cfg, e.DeploymentID, e.NodeName)
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
 	if err != nil {
 		return err
 	}
@@ -306,7 +309,7 @@ func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 	err = ioutil.WriteFile(archivePath, zippedContent, 0700)
 
 	// Set the corresponding attribute
-	err = deployments.SetAttributeForAllInstances(e.KV, e.DeploymentID, e.NodeName,
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
 		zipResultAttribute, archivePath)
 	if err != nil {
 		err = errors.Wrapf(err, "Failed to store attribute %s for deployment %s node %s",
@@ -316,20 +319,21 @@ func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 	return err
 }
 
-func (e *DatasetTransferExecution) resolveInputs() error {
+func (e *DatasetTransferExecution) resolveInputs(ctx context.Context) error {
 	var err error
 	// TODO switch to debug mode
 	log.Debugf("Get environment inputs for node:%q", e.NodeName)
-	e.EnvInputs, e.VarInputsNames, err = operations.ResolveInputsWithInstances(e.KV, e.DeploymentID, e.NodeName, e.TaskID, e.Operation, nil, nil)
+	e.EnvInputs, e.VarInputsNames, err = operations.ResolveInputsWithInstances(
+		ctx, e.DeploymentID, e.NodeName, e.TaskID, e.Operation, nil, nil)
 	// TODO switch to debug mode
 	log.Printf("Environment inputs: %v", e.EnvInputs)
 	return err
 }
 
-func (e *DatasetTransferExecution) resolveArtifacts() error {
+func (e *DatasetTransferExecution) resolveArtifacts(ctx context.Context) error {
 	var err error
 	log.Debugf("Get artifacts for node:%q", e.NodeName)
-	e.Artifacts, err = deployments.GetArtifactsForNode(e.KV, e.DeploymentID, e.NodeName)
+	e.Artifacts, err = deployments.GetArtifactsForNode(ctx, e.DeploymentID, e.NodeName)
 	log.Debugf("Resolved artifacts: %v", e.Artifacts)
 	return err
 }

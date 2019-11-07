@@ -26,7 +26,6 @@ import (
 	"github.com/ystia/yorc/v4/config"
 	"github.com/ystia/yorc/v4/deployments"
 	"github.com/ystia/yorc/v4/events"
-	"github.com/ystia/yorc/v4/helper/consulutil"
 	"github.com/ystia/yorc/v4/log"
 	"github.com/ystia/yorc/v4/prov"
 	"github.com/ystia/yorc/v4/prov/scheduling"
@@ -53,6 +52,7 @@ const (
 
 var fileTypes = []fileType{logFile, progressFile, standardErrorFile, standardOutputFile}
 
+// ActionOperator holds function allowing to execute an action
 type ActionOperator struct {
 }
 
@@ -63,6 +63,7 @@ type actionData struct {
 	sessionID string
 }
 
+// ExecAction allows to execute and action
 func (o *ActionOperator) ExecAction(ctx context.Context, cfg config.Configuration, taskID, deploymentID string, action *prov.Action) (bool, error) {
 	log.Debugf("Execute Action with ID:%q, taskID:%q, deploymentID:%q", action.ID, taskID, deploymentID)
 
@@ -107,7 +108,7 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 		return true, errors.Errorf("Missing mandatory information taskID for actionType:%q", action.ActionType)
 	}
 
-	heappeClient, err := getHEAppEClient(cfg, deploymentID, actionData.nodeName)
+	heappeClient, err := getHEAppEClient(ctx, cfg, deploymentID, actionData.nodeName)
 	if err != nil {
 		return true, err
 	}
@@ -132,7 +133,7 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 	}
 
 	jobState := getJobState(jobInfo)
-	previousJobState, err := deployments.GetInstanceStateString(consulutil.GetKV(), deploymentID, actionData.nodeName, "0")
+	previousJobState, err := deployments.GetInstanceStateString(ctx, deploymentID, actionData.nodeName, "0")
 	if err != nil {
 		return true, errors.Wrapf(err, "failed to get instance state for job %d", actionData.jobID)
 	}
@@ -163,13 +164,13 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 		}
 		// Print state change
 		if previousJobState != jobState {
-			deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
+			deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
 		}
 
 	} else {
 		// Print state change
 		if previousJobState != jobState {
-			deployments.SetInstanceStateStringWithContextualLogs(ctx, consulutil.GetKV(), deploymentID, actionData.nodeName, "0", jobState)
+			deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
 		}
 		// Log job outputs
 		if jobState == jobStateRunning {

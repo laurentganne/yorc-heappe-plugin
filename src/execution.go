@@ -39,7 +39,7 @@ const (
 
 // Execution is the interface holding functions to execute an operation
 type Execution interface {
-	ResolveExecution() error
+	ResolveExecution(ctx context.Context) error
 	ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error)
 	Execute(ctx context.Context) error
 }
@@ -54,7 +54,7 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 	kv := consulClient.KV()
 
 	var exec Execution
-	isJob, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeJobType)
+	isJob, err := deployments.IsNodeDerivedFrom(ctx, deploymentID, nodeName, heappeJobType)
 	if err != nil {
 		return exec, err
 	}
@@ -64,8 +64,8 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 		if err != nil {
 			return nil, err
 		}
-		locationProps, err := locationMgr.GetLocationPropertiesForNode(deploymentID,
-			nodeName, heappeInfrastructureType)
+		locationProps, err := locationMgr.GetLocationPropertiesForNode(ctx,
+			deploymentID, nodeName, heappeInfrastructureType)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 			// Default value
 			monitoringTimeInterval = locationDefaultMonitoringTimeInterval
 		}
-		exec = &job.JobExecution{
+		exec = &job.Execution{
 			KV:                     kv,
 			Cfg:                    cfg,
 			DeploymentID:           deploymentID,
@@ -89,12 +89,12 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 	}
 
 	isReceiveDataset := false
-	isSendDataset, err := deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeSendDatasetType)
+	isSendDataset, err := deployments.IsNodeDerivedFrom(ctx, deploymentID, nodeName, heappeSendDatasetType)
 	if err != nil {
 		return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
 	}
 	if !isSendDataset {
-		isReceiveDataset, err = deployments.IsNodeDerivedFrom(kv, deploymentID, nodeName, heappeReceiveDatasetType)
+		isReceiveDataset, err = deployments.IsNodeDerivedFrom(ctx, deploymentID, nodeName, heappeReceiveDatasetType)
 		if err != nil {
 			return exec, errors.Wrapf(err, "Could not get type for deployment %s node %s", deploymentID, nodeName)
 		}
@@ -114,5 +114,5 @@ func newExecution(ctx context.Context, cfg config.Configuration, taskID, deploym
 		Operation:    operation,
 	}
 
-	return exec, exec.ResolveExecution()
+	return exec, exec.ResolveExecution(ctx)
 }
