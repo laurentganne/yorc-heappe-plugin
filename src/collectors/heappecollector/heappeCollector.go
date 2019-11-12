@@ -72,11 +72,7 @@ func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg conf
 	}
 
 	var bytesVal []byte
-	if len(params) < 2 {
-		// The location name is always part of the task parameters, so here
-		// there is no other parameters asking for infra usage of a given user
-		// or between a given start time and a given end time => returning the
-		// current clusters nodes usage
+	if len(params) == 0 {
 		bytesVal, err = getClustersNodeUsage(heappeClient)
 		if err != nil {
 			return nil, err
