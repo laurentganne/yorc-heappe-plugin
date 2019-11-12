@@ -24,5 +24,6 @@ import (
 //
 // CollectInfo returns data about infrastructure usage for the defined location
 type InfraUsageCollectorDelegate interface {
-	CollectInfo(ctx context.Context, cfg config.Configuration, taskID, locationName string) (map[string]interface{}, error)
+	CollectInfo(ctx context.Context, cfg config.Configuration, taskID, locationName string,
+		params map[string]string) (map[string]interface{}, error)
 }

@@ -46,10 +46,16 @@ func newInfraUsageCollector() prov.InfraUsageCollector {
 func (i *infraUsageCollector) GetUsageInfo(ctx context.Context, cfg config.Configuration,
 	taskID, infraName, locationName string, params map[string]string) (map[string]interface{}, error) {
 
-	log.Printf("Retrieving infrastructure usage info for location:%q", locationName)
+	log.Printf("Retrieving infrastructure usage info for location %s", locationName)
 	collDelegate, exist := i.collectorDelegates[infraName]
 	if !exist {
 		return nil, errors.Errorf("No infra collector delegate found for the infrastructure:%s", infraName)
 	}
-	return collDelegate.CollectInfo(ctx, cfg, taskID, locationName)
+	collectedInfo, err := collDelegate.CollectInfo(ctx, cfg, taskID, locationName, params)
+	if err != nil {
+		log.Printf("Failed to get infrastructure usage info for location %s: %s",
+			locationName, err.Error())
+	}
+
+	return collectedInfo, err
 }

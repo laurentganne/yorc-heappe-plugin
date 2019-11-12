@@ -17,6 +17,7 @@ package heappecollector
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/laurentganne/yorc-heappe-plugin/v1/collectors"
 	"github.com/laurentganne/yorc-heappe-plugin/v1/heappe"
@@ -28,7 +29,16 @@ import (
 )
 
 const (
-	infrastructureType = "heappe"
+	// UserQueryParameter is the parameter specifying the user for which to provide
+	// Infrastrcuture usage (by default, the user provided in the location will be used)
+	UserQueryParameter = "user"
+	// StartTimeQueryParameter is the parameter sepcifying the start time of
+	// Infrastructure usage report
+	StartTimeQueryParameter = "start"
+	// EndTimeQueryParameter is the parameter sepcifying the end time of
+	// Infrastructure usage report
+	EndTimeQueryParameter = "end"
+	infrastructureType    = "heappe"
 )
 
 // ClustersUsage defines the structure of the collected info
@@ -44,7 +54,7 @@ func NewInfraUsageCollectorDelegate() collectors.InfraUsageCollectorDelegate {
 
 // CollectInfo allows to collect usage info about defined infrastructure
 func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg config.Configuration,
-	taskID, locationName string) (map[string]interface{}, error) {
+	taskID, locationName string, params map[string]string) (map[string]interface{}, error) {
 
 	locationMgr, err := locations.GetManager(cfg)
 	if err != nil {
@@ -56,40 +66,31 @@ func (h *heappeUsageCollectorDelegate) CollectInfo(ctx context.Context, cfg conf
 		return nil, err
 	}
 
-	userName := locationProps.GetString(heappe.LocationUserPropertyName)
-	if userName == "" {
-		return nil, errors.Errorf("No user defined in location")
-	}
-
 	heappeClient, err := heappe.GetClient(locationProps)
 	if err != nil {
 		return nil, err
 	}
 
-	bytesVal, err := getClustersNodeUsage(heappeClient)
-	if err != nil {
-		return nil, err
+	var bytesVal []byte
+	if len(params) < 2 {
+		// The location name is always part of the task parameters, so here
+		// there is no other parameters asking for infra usage of a given user
+		// or between a given start time and a given end time => returning the
+		// current clusters nodes usage
+		bytesVal, err = getClustersNodeUsage(heappeClient)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		bytesVal, err = getUserInfraUsage(heappeClient, locationProps, params)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	/*
 
-		// Getting corresponding user ID
-		userID, err := getUserID(heappeClient, userName)
-		if err != nil {
-			return nil, err
-		}
-
-		currentTime := time.Now()
-		endTimeStr := currentTime.Format(time.RFC3339)
-		startTime := currentTime.AddDate(0, -1, 0)
-		startTimeStr := startTime.Format(time.RFC3339)
-		report, err := heappeClient.GetUserResourceUsageReport(userID, startTimeStr, endTimeStr)
-
-		bytesVal, err := json.Marshal(report)
-		if err != nil {
-			return nil, err
-		}
-	*/
+	 */
 	var result map[string]interface{}
 	err = json.Unmarshal(bytesVal, &result)
 
@@ -141,4 +142,33 @@ func getUserID(client heappe.Client, userName string) (int64, error) {
 	}
 
 	return userID, errors.Errorf("Found no user with name %s", userName)
+}
+
+func getUserInfraUsage(client heappe.Client, locationProps config.DynamicMap, params map[string]string) ([]byte, error) {
+	// Getting the user for which to provide a usage report
+	userName := params[UserQueryParameter]
+	if userName == "" {
+		userName = locationProps.GetString(heappe.LocationUserPropertyName)
+		if userName == "" {
+			return nil, errors.Errorf("No user defined in location")
+		}
+	}
+
+	// Gettting the corresponding user ID from HEAppE
+	userID, err := getUserID(client, userName)
+	if err != nil {
+		return nil, err
+	}
+
+	endTime := params[EndTimeQueryParameter]
+	if endTime == "" {
+		endTime = time.Now().Format(time.RFC3339)
+	}
+	startTime := params[StartTimeQueryParameter]
+	if startTime == "" {
+		return nil, errors.Errorf("Missing parameter %q in query to get infrastructure usage from a given start time", StartTimeQueryParameter)
+	}
+	report, err := client.GetUserResourceUsageReport(userID, startTime, endTime)
+
+	return json.Marshal(report)
 }
