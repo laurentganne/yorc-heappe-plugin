@@ -140,6 +140,22 @@ node_types:
         type: string
         description: >
           ID of the HEAppE job created
+      file_transfer_user:
+        type: string
+        description: >
+          User used to transfer files to/from job
+      file_transfer_key:
+        type: string
+        description: >
+          Key used to transfer files to/from job
+      file_transfer_server:
+        type: string
+        description: >
+          Server host name used to transfer files to/from job
+      file_transfer_path:
+        type: string
+        description: >
+          Path on remote server where to store/get job files 
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
@@ -150,6 +166,15 @@ node_types:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
         delete:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+      custom:
+        enable_file_transfer:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+        disable_file_transfer:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker

@@ -16,6 +16,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -34,11 +35,18 @@ import (
 const (
 	installOperation                      = "install"
 	uninstallOperation                    = "uninstall"
+	enableFileTransferOperation           = "custom.enable_file_transfer"
+	disableFileTransferOperation          = "custom.disable_file_transfer"
 	jobSpecificationProperty              = "jobSpecification"
 	infrastructureType                    = "heappe"
 	locationJobMonitoringTimeInterval     = "job_monitoring_time_interval"
 	locationDefaultMonitoringTimeInterval = 5 * time.Second
 	jobIDConsulAttribute                  = "job_id"
+	transferUserConsulAttribute           = "file_transfer_user"
+	transferKeyConsulAttribute            = "file_transfer_key"
+	transferServerConsulAttribute         = "file_transfer_server"
+	transferPathConsulAttribute           = "file_transfer_path"
+	transferConsulAttribute               = "file_transfer"
 )
 
 // Execution holds job Execution properties
@@ -94,6 +102,20 @@ func (e *Execution) Execute(ctx context.Context) error {
 		if err != nil {
 			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
 				"Failed to delete Job %q, error %s", e.NodeName, err.Error())
+
+		}
+	case enableFileTransferOperation:
+		err = e.enableFileTransfer(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
+				"Failed to enable file transfer for Job %q, error %s", e.NodeName, err.Error())
+
+		}
+	case disableFileTransferOperation:
+		err = e.disableFileTransfer(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
+				"Failed to disable file transfer for Job %q, error %s", e.NodeName, err.Error())
 
 		}
 	case tosca.RunnableSubmitOperationName:
@@ -180,6 +202,109 @@ func (e *Execution) submitJob(ctx context.Context) error {
 	}
 
 	return heappeClient.SubmitJob(jobID)
+}
+
+func (e *Execution) enableFileTransfer(ctx context.Context) error {
+
+	jobID, err := e.getJobID(ctx)
+	if err != nil {
+		return err
+	}
+
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
+	if err != nil {
+		return err
+	}
+
+	ftDetails, err := heappeClient.GetFileTransferMethod(jobID)
+	if err != nil {
+		return err
+	}
+
+	return e.storeFileTransferAttributes(ctx, ftDetails, jobID)
+}
+
+func (e *Execution) disableFileTransfer(ctx context.Context) error {
+
+	jobID, err := e.getJobID(ctx)
+	if err != nil {
+		return err
+	}
+
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
+	if err != nil {
+		return err
+	}
+
+	ids, err := deployments.GetNodeInstancesIds(ctx, e.DeploymentID, e.NodeName)
+	if err != nil {
+		return err
+	}
+
+	if len(ids) == 0 {
+		return errors.Errorf("Found no instance fo node %s in deployment %s", e.NodeName, e.DeploymentID)
+	}
+
+	attr, err := deployments.GetInstanceAttributeValue(ctx, e.DeploymentID, e.NodeName, ids[0], transferConsulAttribute)
+	if err != nil {
+		return err
+	}
+
+	var fileTransfer heappe.FileTransferMethod
+	err = json.Unmarshal([]byte(attr.RawString()), &fileTransfer)
+
+	err = heappeClient.EndFileTransfer(jobID, fileTransfer)
+	if err != nil {
+		return err
+	}
+
+	// Reset file transfer attributes
+	fileTransfer.Credentials.Username = ""
+	fileTransfer.Credentials.PrivateKey = ""
+	fileTransfer.ServerHostname = ""
+	fileTransfer.SharedBasepath = ""
+
+	return e.storeFileTransferAttributes(ctx, fileTransfer, jobID)
+}
+
+func (e *Execution) storeFileTransferAttributes(ctx context.Context, fileTransfer heappe.FileTransferMethod, jobID int64) error {
+
+	err := deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
+		transferUserConsulAttribute, fileTransfer.Credentials.Username)
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer user", jobID)
+		return err
+	}
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
+		transferKeyConsulAttribute, fileTransfer.Credentials.PrivateKey)
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer key", jobID)
+		return err
+	}
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
+		transferServerConsulAttribute, fileTransfer.ServerHostname)
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer server", jobID)
+		return err
+	}
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
+		transferPathConsulAttribute, fileTransfer.SharedBasepath)
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer path", jobID)
+	}
+
+	// Storing the full file transfer object needed when it will be disabled
+	v, err := json.Marshal(fileTransfer)
+	if err != nil {
+		return err
+	}
+	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
+		transferConsulAttribute, string(v))
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer path", jobID)
+	}
+
+	return err
 }
 
 func (e *Execution) cancelJob(ctx context.Context) error {
