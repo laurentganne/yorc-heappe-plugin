@@ -118,6 +118,25 @@ data_types:
         description: Maximum time for the job to run (in seconds)
         type: integer
         default: 600
+  org.heappe.types.FileTransfer:
+    derived_from: tosca.datatypes.Root
+    properties:
+      user:
+        type: string
+        description: >
+          User used to transfer files to/from job
+      key:
+        type: string
+        description: >
+          Key used to transfer files to/from job
+      server:
+        type: string
+        description: >
+          Server host name used to transfer files to/from job
+      path:
+        type: string
+        description: >
+          Path on remote server where to store/get job files
 artifact_types:
   org.heappe.artifacts.Deployment:
     derived_from: tosca.artifacts.Deployment
@@ -140,22 +159,10 @@ node_types:
         type: string
         description: >
           ID of the HEAppE job created
-      file_transfer_user:
-        type: string
+      file_transfer:
+        type: org.heappe.types.FileTransfer
         description: >
-          User used to transfer files to/from job
-      file_transfer_key:
-        type: string
-        description: >
-          Key used to transfer files to/from job
-      file_transfer_server:
-        type: string
-        description: >
-          Server host name used to transfer files to/from job
-      file_transfer_path:
-        type: string
-        description: >
-          Path on remote server where to store/get job files 
+          File transfer settings
       changed_files:
         type: list
         entry_schema:

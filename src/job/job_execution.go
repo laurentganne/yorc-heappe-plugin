@@ -41,11 +41,12 @@ const (
 	jobSpecificationProperty      = "jobSpecification"
 	infrastructureType            = "heappe"
 	jobIDConsulAttribute          = "job_id"
-	transferUserConsulAttribute   = "file_transfer_user"
-	transferKeyConsulAttribute    = "file_transfer_key"
-	transferServerConsulAttribute = "file_transfer_server"
-	transferPathConsulAttribute   = "file_transfer_path"
+	transferUser                  = "user"
+	transferKey                   = "key"
+	transferServer                = "server"
+	transferPath                  = "path"
 	transferConsulAttribute       = "file_transfer"
+	transferObjectConsulAttribute = "transfer_object"
 	changedFilesConsulAttribute   = "changed_files"
 )
 
@@ -252,7 +253,7 @@ func (e *Execution) disableFileTransfer(ctx context.Context) error {
 		return errors.Errorf("Found no instance fo node %s in deployment %s", e.NodeName, e.DeploymentID)
 	}
 
-	attr, err := deployments.GetInstanceAttributeValue(ctx, e.DeploymentID, e.NodeName, ids[0], transferConsulAttribute)
+	attr, err := deployments.GetInstanceAttributeValue(ctx, e.DeploymentID, e.NodeName, ids[0], transferObjectConsulAttribute)
 	if err != nil {
 		return err
 	}
@@ -312,28 +313,15 @@ func updateListOfChangedFiles(ctx context.Context, heappeClient heappe.Client, d
 
 func (e *Execution) storeFileTransferAttributes(ctx context.Context, fileTransfer heappe.FileTransferMethod, jobID int64) error {
 
-	err := deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
-		transferUserConsulAttribute, fileTransfer.Credentials.Username)
+	err := deployments.SetAttributeComplexForAllInstances(ctx, e.DeploymentID, e.NodeName, transferConsulAttribute,
+		map[string]string{
+			transferUser:   fileTransfer.Credentials.Username,
+			transferKey:    fileTransfer.Credentials.PrivateKey,
+			transferServer: fileTransfer.ServerHostname,
+			transferPath:   fileTransfer.SharedBasepath,
+		})
 	if err != nil {
-		err = errors.Wrapf(err, "Job %d, failed to store file transfer user", jobID)
-		return err
-	}
-	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
-		transferKeyConsulAttribute, fileTransfer.Credentials.PrivateKey)
-	if err != nil {
-		err = errors.Wrapf(err, "Job %d, failed to store file transfer key", jobID)
-		return err
-	}
-	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
-		transferServerConsulAttribute, fileTransfer.ServerHostname)
-	if err != nil {
-		err = errors.Wrapf(err, "Job %d, failed to store file transfer server", jobID)
-		return err
-	}
-	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
-		transferPathConsulAttribute, fileTransfer.SharedBasepath)
-	if err != nil {
-		err = errors.Wrapf(err, "Job %d, failed to store file transfer path", jobID)
+		err = errors.Wrapf(err, "Job %d, failed to store file transfer details", jobID)
 		return err
 	}
 
@@ -343,7 +331,7 @@ func (e *Execution) storeFileTransferAttributes(ctx context.Context, fileTransfe
 		return err
 	}
 	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
-		transferConsulAttribute, string(v))
+		transferObjectConsulAttribute, string(v))
 	if err != nil {
 		err = errors.Wrapf(err, "Job %d, failed to store file transfer path", jobID)
 	}
