@@ -151,7 +151,12 @@ node_types:
       file_transfer_path:
         type: string
         description: >
-          Path on remote server where to store/get job files 
+          Path on remote server where to store/get job files
+      changed_files:
+        type: list
+        entry_schema:
+          description: List of files created or changed by the job execution
+          type: string
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
@@ -184,6 +189,10 @@ node_types:
             file: "embedded"
             type: org.heappe.artifacts.Deployment
         disable_file_transfer:
+          implementation:
+            file: "embedded"
+            type: org.heappe.artifacts.Deployment
+        list_changed_files:
           implementation:
             file: "embedded"
             type: org.heappe.artifacts.Deployment

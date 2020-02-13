@@ -157,6 +157,11 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 
 	// If the job state is a final state, print job logs before printing the state change
 	if deregister {
+		// Updtae list of files changed by the job
+		err := updateListOfChangedFiles(ctx, heappeClient, deploymentID, actionData.nodeName, actionData.jobID)
+		if err != nil {
+			log.Printf("Failed to update list of files changed by Job %d : %s", actionData.jobID, err.Error())
+		}
 		// Log job outputs
 		logErr := o.getJobOutputs(ctx, heappeClient, deploymentID, actionData.nodeName, action, jobInfo)
 		if logErr != nil {
@@ -164,13 +169,19 @@ func (o *ActionOperator) monitorJob(ctx context.Context, cfg config.Configuratio
 		}
 		// Print state change
 		if previousJobState != jobState {
-			deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
+			err := deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
+			if err != nil {
+				log.Printf("Failed to set Job %d state %s: %s", actionData.jobID, jobState, err.Error())
+			}
 		}
 
 	} else {
 		// Print state change
 		if previousJobState != jobState {
-			deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
+			err := deployments.SetInstanceStateStringWithContextualLogs(ctx, deploymentID, actionData.nodeName, "0", jobState)
+			if err != nil {
+				log.Printf("Failed to set instance %s %s state %s: %s", deploymentID, actionData.nodeName, jobState, err.Error())
+			}
 		}
 		// Log job outputs
 		if jobState == jobStateRunning {

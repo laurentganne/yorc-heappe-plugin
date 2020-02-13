@@ -33,20 +33,20 @@ import (
 )
 
 const (
-	installOperation                      = "install"
-	uninstallOperation                    = "uninstall"
-	enableFileTransferOperation           = "custom.enable_file_transfer"
-	disableFileTransferOperation          = "custom.disable_file_transfer"
-	jobSpecificationProperty              = "jobSpecification"
-	infrastructureType                    = "heappe"
-	locationJobMonitoringTimeInterval     = "job_monitoring_time_interval"
-	locationDefaultMonitoringTimeInterval = 5 * time.Second
-	jobIDConsulAttribute                  = "job_id"
-	transferUserConsulAttribute           = "file_transfer_user"
-	transferKeyConsulAttribute            = "file_transfer_key"
-	transferServerConsulAttribute         = "file_transfer_server"
-	transferPathConsulAttribute           = "file_transfer_path"
-	transferConsulAttribute               = "file_transfer"
+	installOperation              = "install"
+	uninstallOperation            = "uninstall"
+	enableFileTransferOperation   = "custom.enable_file_transfer"
+	disableFileTransferOperation  = "custom.disable_file_transfer"
+	listChangedFilesOperation     = "custom.list_changed_files"
+	jobSpecificationProperty      = "jobSpecification"
+	infrastructureType            = "heappe"
+	jobIDConsulAttribute          = "job_id"
+	transferUserConsulAttribute   = "file_transfer_user"
+	transferKeyConsulAttribute    = "file_transfer_key"
+	transferServerConsulAttribute = "file_transfer_server"
+	transferPathConsulAttribute   = "file_transfer_path"
+	transferConsulAttribute       = "file_transfer"
+	changedFilesConsulAttribute   = "changed_files"
 )
 
 // Execution holds job Execution properties
@@ -116,6 +116,13 @@ func (e *Execution) Execute(ctx context.Context) error {
 		if err != nil {
 			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
 				"Failed to disable file transfer for Job %q, error %s", e.NodeName, err.Error())
+
+		}
+	case listChangedFilesOperation:
+		err = e.listChangedFiles(ctx)
+		if err != nil {
+			events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
+				"Failed to list changed files for Job %q, error %s", e.NodeName, err.Error())
 
 		}
 	case tosca.RunnableSubmitOperationName:
@@ -252,6 +259,9 @@ func (e *Execution) disableFileTransfer(ctx context.Context) error {
 
 	var fileTransfer heappe.FileTransferMethod
 	err = json.Unmarshal([]byte(attr.RawString()), &fileTransfer)
+	if err != nil {
+		return err
+	}
 
 	err = heappeClient.EndFileTransfer(jobID, fileTransfer)
 	if err != nil {
@@ -265,6 +275,39 @@ func (e *Execution) disableFileTransfer(ctx context.Context) error {
 	fileTransfer.SharedBasepath = ""
 
 	return e.storeFileTransferAttributes(ctx, fileTransfer, jobID)
+}
+
+func (e *Execution) listChangedFiles(ctx context.Context) error {
+
+	jobID, err := e.getJobID(ctx)
+	if err != nil {
+		return err
+	}
+
+	heappeClient, err := getHEAppEClient(ctx, e.Cfg, e.DeploymentID, e.NodeName)
+	if err != nil {
+		return err
+	}
+
+	return updateListOfChangedFiles(ctx, heappeClient, e.DeploymentID, e.NodeName, jobID)
+}
+
+func updateListOfChangedFiles(ctx context.Context, heappeClient heappe.Client, deploymentID, nodeName string, jobID int64) error {
+
+	changedFiles, err := heappeClient.ListChangedFilesForJob(jobID)
+	if err != nil {
+		return err
+	}
+
+	err = deployments.SetAttributeComplexForAllInstances(ctx, deploymentID, nodeName,
+		changedFilesConsulAttribute, changedFiles)
+	if err != nil {
+		err = errors.Wrapf(err, "Job %d, failed to store list of changed files", jobID)
+		return err
+	}
+
+	return err
+
 }
 
 func (e *Execution) storeFileTransferAttributes(ctx context.Context, fileTransfer heappe.FileTransferMethod, jobID int64) error {
@@ -291,6 +334,7 @@ func (e *Execution) storeFileTransferAttributes(ctx context.Context, fileTransfe
 		transferPathConsulAttribute, fileTransfer.SharedBasepath)
 	if err != nil {
 		err = errors.Wrapf(err, "Job %d, failed to store file transfer path", jobID)
+		return err
 	}
 
 	// Storing the full file transfer object needed when it will be disabled
@@ -372,7 +416,7 @@ func (e *Execution) getJobSpecification(ctx context.Context) (heappe.JobSpecific
 	}
 
 	for _, fieldPropName := range fieldPropNames {
-		*(fieldPropName.field), err = getIntNodePropertyValue(ctx, e.DeploymentID,
+		*(fieldPropName.field), _ = getIntNodePropertyValue(ctx, e.DeploymentID,
 			e.NodeName, jobSpecificationProperty, fieldPropName.propName)
 	}
 

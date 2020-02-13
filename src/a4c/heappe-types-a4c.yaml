@@ -156,6 +156,11 @@ node_types:
         type: string
         description: >
           Path on remote server where to store/get job files 
+      changed_files:
+        type: list
+        entry_schema:
+          description: List of files created or changed by the job execution
+          type: string
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
@@ -175,6 +180,10 @@ node_types:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
         disable_file_transfer:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+        list_changed_files:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
