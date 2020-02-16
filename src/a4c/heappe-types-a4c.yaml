@@ -165,9 +165,10 @@ node_types:
           File transfer settings
       changed_files:
         type: list
-        entry_schema:
-          description: List of files created or changed by the job execution
-          type: string
+        # entry schema not expected by Alien4Cloud
+        # entry_schema:
+        #  type: string
+        description: List of files created or changed by the job execution
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
