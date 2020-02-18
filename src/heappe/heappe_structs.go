@@ -14,6 +14,13 @@
 
 package heappe
 
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/pkg/errors"
+)
+
 // FileTransferProtocol used to transfer files to the HPC cluster
 type FileTransferProtocol int
 
@@ -286,4 +293,24 @@ type ClusterNodeUsage struct {
 type ClusterNodeUsageRESTParams struct {
 	ClusterNodeID int64  `json:"clusterNodeId"`
 	SessionCode   string `json:"sessionCode"`
+}
+
+// UnmarshalJSON is used to read a file transfer protocol from a string
+func (p *FileTransferProtocol) UnmarshalJSON(b []byte) error {
+	/*
+		var s string
+		err := json.Unmarshal(b, &s)
+		if err != nil {
+			return errors.Wrap(err, "failed to unmarshal file transfer protocol as string")
+		}
+	*/
+	val, err := strconv.ParseInt(string(b), 10, 0)
+	if err == nil {
+		*p = FileTransferProtocol(val)
+	} else {
+		var val int
+		_, err = fmt.Sscanf(string(b), "\"%d\"", &val)
+		*p = FileTransferProtocol(val)
+	}
+	return errors.Wrap(err, "failed to parse file transfer protocol from JSON input")
 }

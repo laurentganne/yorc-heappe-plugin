@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/consul/api"
@@ -86,7 +87,7 @@ func (e *Execution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Durati
 func (e *Execution) Execute(ctx context.Context) error {
 
 	var err error
-	switch e.Operation.Name {
+	switch strings.ToLower(e.Operation.Name) {
 	case installOperation, "standard.create":
 		events.WithContextOptionalFields(ctx).NewLogEntry(events.LogLevelINFO, e.DeploymentID).Registerf(
 			"Creating Job %q", e.NodeName)
@@ -250,7 +251,7 @@ func (e *Execution) disableFileTransfer(ctx context.Context) error {
 	}
 
 	if len(ids) == 0 {
-		return errors.Errorf("Found no instance fo node %s in deployment %s", e.NodeName, e.DeploymentID)
+		return errors.Errorf("Found no instance for node %s in deployment %s", e.NodeName, e.DeploymentID)
 	}
 
 	attr, err := deployments.GetInstanceAttributeValue(ctx, e.DeploymentID, e.NodeName, ids[0], transferObjectConsulAttribute)

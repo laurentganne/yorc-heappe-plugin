@@ -339,7 +339,7 @@ func (e *DatasetTransferExecution) resolveInputs(ctx context.Context) error {
 func (e *DatasetTransferExecution) resolveArtifacts(ctx context.Context) error {
 	var err error
 	log.Debugf("Get artifacts for node:%q", e.NodeName)
-	e.Artifacts, err = deployments.GetArtifactsForNode(ctx, e.DeploymentID, e.NodeName)
+	e.Artifacts, err = deployments.GetFileArtifactsForNode(ctx, e.DeploymentID, e.NodeName)
 	log.Debugf("Resolved artifacts: %v", e.Artifacts)
 	return err
 }
