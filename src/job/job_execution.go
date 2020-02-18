@@ -65,7 +65,7 @@ type Execution struct {
 
 // ExecuteAsync executes an asynchronous operation
 func (e *Execution) ExecuteAsync(ctx context.Context) (*prov.Action, time.Duration, error) {
-	if e.Operation.Name != tosca.RunnableRunOperationName {
+	if strings.ToLower(e.Operation.Name) != tosca.RunnableRunOperationName {
 		return nil, 0, errors.Errorf("Unsupported asynchronous operation %q", e.Operation.Name)
 	}
 
