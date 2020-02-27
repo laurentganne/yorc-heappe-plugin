@@ -118,6 +118,25 @@ data_types:
         description: Maximum time for the job to run (in seconds)
         type: integer
         default: 600
+  org.heappe.types.FileTransfer:
+    derived_from: tosca.datatypes.Root
+    properties:
+      user:
+        type: string
+        description: >
+          User used to transfer files to/from job
+      key:
+        type: string
+        description: >
+          Key used to transfer files to/from job
+      server:
+        type: string
+        description: >
+          Server host name used to transfer files to/from job
+      path:
+        type: string
+        description: >
+          Path on remote server where to store/get job files
 artifact_types:
   org.heappe.artifacts.Deployment:
     derived_from: tosca.artifacts.Deployment
@@ -140,6 +159,16 @@ node_types:
         type: string
         description: >
           ID of the HEAppE job created
+      file_transfer:
+        type: org.heappe.types.FileTransfer
+        description: >
+          File transfer settings
+      changed_files:
+        type: list
+        # entry schema not expected by Alien4Cloud
+        # entry_schema:
+        #  type: string
+        description: List of files created or changed by the job execution
     capabilities:
       heappejob:
         type: org.heappe.capabilities.HeappeJob
@@ -150,6 +179,19 @@ node_types:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker
         delete:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+      custom:
+        enable_file_transfer:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+        disable_file_transfer:
+          implementation:
+            file: heappe-types-a4c.yaml
+            type: tosca.artifacts.Deployment.Image.Container.Docker
+        list_changed_files:
           implementation:
             file: heappe-types-a4c.yaml
             type: tosca.artifacts.Deployment.Image.Container.Docker

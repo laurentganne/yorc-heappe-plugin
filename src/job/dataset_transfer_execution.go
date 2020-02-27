@@ -148,7 +148,7 @@ func (e *DatasetTransferExecution) transferDataset(ctx context.Context) error {
 	}
 
 	defer func() {
-		heappeClient.EndFileTransfer(jobID, transferMethod)
+		_ = heappeClient.EndFileTransfer(jobID, transferMethod)
 	}()
 
 	clientConfig, err := getSSHClientConfig(transferMethod.Credentials.Username,
@@ -251,7 +251,7 @@ func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 	}
 
 	defer func() {
-		heappeClient.EndFileTransfer(jobID, transferMethod)
+		_ = heappeClient.EndFileTransfer(jobID, transferMethod)
 	}()
 
 	// go-scp is not yet providing the copy from remote
@@ -306,7 +306,13 @@ func (e *DatasetTransferExecution) getResultFiles(ctx context.Context) error {
 	}
 
 	zippedContent, err := ziputil.ZipPath(copyDir)
+	if err != nil {
+		return err
+	}
 	err = ioutil.WriteFile(archivePath, zippedContent, 0700)
+	if err != nil {
+		return err
+	}
 
 	// Set the corresponding attribute
 	err = deployments.SetAttributeForAllInstances(ctx, e.DeploymentID, e.NodeName,
@@ -333,7 +339,7 @@ func (e *DatasetTransferExecution) resolveInputs(ctx context.Context) error {
 func (e *DatasetTransferExecution) resolveArtifacts(ctx context.Context) error {
 	var err error
 	log.Debugf("Get artifacts for node:%q", e.NodeName)
-	e.Artifacts, err = deployments.GetArtifactsForNode(ctx, e.DeploymentID, e.NodeName)
+	e.Artifacts, err = deployments.GetFileArtifactsForNode(ctx, e.DeploymentID, e.NodeName)
 	log.Debugf("Resolved artifacts: %v", e.Artifacts)
 	return err
 }
